@@ -184,6 +184,8 @@ struct lacp_port {
 #define		LACP_PORT_CFG_DFLT_LACP_KEY 0
 		bool sticky;
 #define		LACP_PORT_CFG_DFLT_STICKY false
+		bool link_up;
+#define		LACP_PORT_CFG_DFLT_STATE true
 	} cfg;
 };
 
@@ -1207,6 +1209,13 @@ static int lacp_port_load_config(struct teamd_context *ctx,
 		lacp_port->cfg.sticky = LACP_PORT_CFG_DFLT_STICKY;
 	teamd_log_dbg("%s: Using sticky \"%d\".", port_name,
 		      lacp_port->cfg.sticky);
+	err = teamd_config_bool_get(ctx, &lacp_port->cfg.link_up,
+				    "$.ports.%s.link_up", port_name);
+	if (err)
+		lacp_port->cfg.link_up = LACP_PORT_CFG_DFLT_STATE;
+	teamd_log_dbg("%s: Using link_up \"%d\".", port_name,
+		      lacp_port->cfg.link_up);
+
 	return 0;
 }
 
@@ -1271,6 +1280,7 @@ static int lacp_port_added(struct teamd_context *ctx,
 		if (!TEAMD_ENOENT(err))
 			goto timeout_callback_del;
 	}
+	team_link_set(ctx->th, tdport->ifindex, lacp_port->cfg.link_up);
 
 	err = lacp_port_set_mac(ctx, tdport);
 	if (err)

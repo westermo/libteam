@@ -1672,6 +1672,46 @@ int team_carrier_get(struct team_handle *th, bool *carrier_up)
 /**
  * @param th		libteam library context
  * @param ifindex	interface index
+ * @param link_up	link state to be set
+ *
+ * @details Sets link status for a network interface
+ *
+ * @return Zero on success or negative number in case of an error.
+ **/
+TEAM_EXPORT
+int team_link_set(struct team_handle *th, int ifindex, bool link_up)
+{
+#ifdef HAVE_RTNL_LINK_SET_CARRIER
+       struct rtnl_link *link;
+       int err;
+
+       link = rtnl_link_alloc();
+       if (!link)
+               return -ENOMEM;
+
+       rtnl_link_set_ifindex(link, ifindex);
+       if (link_up)
+	       rtnl_link_set_flags(link, IFF_UP);
+       else
+	       rtnl_link_unset_flags(link, IFF_UP);
+
+       err = rtnl_link_change(th->nl_cli.sock, link, link, 0);
+       err = -nl2syserr(err);
+
+       rtnl_link_put(link);
+       if (err == -EINVAL) {
+               warn(th, "Failed to set link status.");
+               return 0;
+       }
+       return err;
+#else
+       return -EOPNOTSUPP;
+#endif
+}
+
+/**
+ * @param th		libteam library context
+ * @param ifindex	interface index
  * @param addr		address to be set
  * @param addr_len	length of addr
  *
