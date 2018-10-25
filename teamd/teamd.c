@@ -111,6 +111,8 @@ static void print_help(const struct teamd_context *ctx) {
             "                             already exists\n"
             "    -o --take-over           Take over the device if it already exists\n"
             "    -N --no-quit-destroy     Do not destroy the device on quit\n"
+            "    -T --no-team-destroy     Do not destroy the team device on quit\n"
+            "                             but remove all ports\n"
             "    -t --team-dev=DEVNAME    Use the specified team device\n"
             "    -n --no-ports            Start without ports\n"
             "    -D --dbus-enable         Enable D-Bus interface\n"
@@ -143,6 +145,7 @@ static int parse_command_line(struct teamd_context *ctx,
 		{ "force-recreate",	no_argument,		NULL, 'r' },
 		{ "take-over",		no_argument,		NULL, 'o' },
 		{ "no-quit-destroy",	no_argument,		NULL, 'N' },
+		{ "no-team-destroy",	no_argument,		NULL, 'T' },
 		{ "team-dev",		required_argument,	NULL, 't' },
 		{ "no-ports",		no_argument,		NULL, 'n' },
 		{ "dbus-enable",	no_argument,		NULL, 'D' },
@@ -199,6 +202,9 @@ static int parse_command_line(struct teamd_context *ctx,
 			break;
 		case 'N':
 			ctx->no_quit_destroy = true;
+			break;
+		case 'T':
+			ctx->no_team_destroy = true;
 			break;
 		case 't':
 			free(ctx->team_devname);
@@ -1437,7 +1443,7 @@ static void teamd_fini(struct teamd_context *ctx)
 	teamd_unregister_default_handlers(ctx);
 	teamd_workq_fini(ctx);
 	teamd_run_loop_fini(ctx);
-	if (!ctx->no_quit_destroy)
+	if (!(ctx->no_quit_destroy || ctx->no_team_destroy))
 		team_destroy(ctx->th);
 	team_free(ctx->th);
 }
