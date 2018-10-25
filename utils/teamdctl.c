@@ -23,6 +23,7 @@
 #include <stdbool.h>
 #include <getopt.h>
 #include <errno.h>
+#include <ctype.h>
 #include <jansson.h>
 #include <private/misc.h>
 #include <teamdctl.h>
@@ -390,7 +391,7 @@ static int stateview_json_port_runner_process(char *runner_name,
 		}
 		pr_out_indent_inc();
 		pr_out("aggregator ID: %d%s\n", aggregator_id,
-						aggregator_selected ? ", Selected" : "");
+		                                aggregator_selected ? ", Selected" : "");
 		pr_out("selected: %s\n", boolyesno(selected));
 		pr_out("state: %s\n", state);
 		pr_out2("key: %d\n", key);
@@ -542,9 +543,175 @@ free_json:
 	return err;
 }
 
+
+#define INFO_STATE_LACP_ACTIVITY        0x01
+#define INFO_STATE_LACP_TIMEOUT         0x02
+#define INFO_STATE_AGGREGATION          0x04
+#define INFO_STATE_SYNCHRONIZATION      0x08
+#define INFO_STATE_COLLECTING           0x10
+#define INFO_STATE_DISTRIBUTING         0x20
+#define INFO_STATE_DEFAULTED            0x40
+#define INFO_STATE_EXPIRED              0x80
+
+enum lacp_state {
+        LACP_DETACHED,
+        LACP_WAITING,
+        LACP_ATTACHED,
+        LACP_COLLECTING,
+        LACP_DISTRIBUTING,
+};
+
+static int lacp_get_port_state (int selected, int state)
+{
+	if (selected && state & INFO_STATE_COLLECTING &&
+	    state & INFO_STATE_SYNCHRONIZATION)
+		return LACP_DISTRIBUTING;
+
+	if (selected && state & INFO_STATE_SYNCHRONIZATION)
+		return LACP_COLLECTING;
+
+	if (selected)
+		return LACP_ATTACHED;
+
+	return LACP_DETACHED;
+}
+
+static char *lacp_state_to_str (int state)
+{
+	switch (state){
+	case LACP_DETACHED:
+		return "DETACHED";
+
+	case LACP_WAITING:
+		return "WAITING";
+
+	case LACP_ATTACHED:
+		return "ATTACHED";
+
+	case LACP_COLLECTING:
+		return "COLLECTING";
+
+	case LACP_DISTRIBUTING:
+		return "DISTRIBUTING";
+	}
+
+	return "N/A";
+}
+
+static char *lacp_port_statestr (int selected, int state)
+{
+	return lacp_state_to_str (lacp_get_port_state (selected, state));
+}
+
+static int lacp_is_port_active (int selected, int state)
+{
+	if (selected && state & INFO_STATE_COLLECTING &&
+	    state & INFO_STATE_SYNCHRONIZATION)
+		return 1;
+	else
+		return 0;
+}
+
+static void ifname_to_name_and_label(const char *ifname, int len, char *name, char *label)
+{
+	char *ptr;
+
+	snprintf(name, 4, "%s", ifname);
+	name[0] = toupper(name[0]);
+	snprintf(label, len, "%s", &ifname[3]);
+	ptr = strchr(label, '-');
+	if (ptr)
+		*ptr = '/';
+}
+
+static int stateview_json_process_advanced(char *dump)
+{
+	json_t *dump_json;
+        json_t *ports_json;
+        json_t *iter;
+        json_t *port_link_watches_json;
+	json_t *actor_json;
+	json_t *partner_json;
+	char *runner_name;
+	char *ifname;
+	char *system;
+	char name[4];
+	char label[4];
+	int err, up, selected, key, port, astate, pstate;
+
+	err = __jsonload(&dump_json, dump);
+	if (err)
+		return err;
+
+        err = json_unpack(dump_json, "{s:{s:s}}",
+			  "setup", "runner_name", &runner_name);
+	if (err)
+		goto free_json;
+
+        err = json_unpack(dump_json, "{s:o}", "ports", &ports_json);
+	if (err)
+		goto free_json;
+
+        for (iter = json_object_iter(ports_json); iter;
+	     iter = json_object_iter_next(ports_json, iter)) {
+		json_t *port_json = json_object_iter_value(iter);
+
+                err = json_unpack(port_json, "{s:{s:s}, s:o}", "ifinfo", "ifname", &ifname,
+				  "link_watches", &port_link_watches_json);
+                if (err)
+			goto free_json;
+
+		err = json_unpack(port_link_watches_json, "{s:b}", "up", &up);
+		if (err)
+			goto free_json;
+
+		err = json_unpack(port_json,
+				  "{s:{s:b, s:o, s:o}}",
+				  "runner",
+				  "selected", &selected,
+				  "actor_lacpdu_info", &actor_json,
+				  "partner_lacpdu_info", &partner_json);
+		if (err)
+			goto free_json;
+
+		err = json_unpack(actor_json, "{s:i}", "state", &astate);
+		if (err)
+			goto free_json;
+
+		err = json_unpack(partner_json, "{s:s, s:i, s:i, s:i}",
+			 "system", &system,
+			 "key", &key,
+			 "port", &port,
+			 "state", &pstate);
+		if (err)
+			goto free_json;
+
+		ifname_to_name_and_label(ifname, 4, name, label);
+
+		pr_out("%3.3s %-3.3s  %4.4s  %-7s  %-12s  %-18s  %2d  %4d\n",
+		       name,
+		       label,
+		       up ? "UP" : "DOWN",
+		       lacp_is_port_active(selected, astate) ? "Yes" : "No",
+		       up ? lacp_port_statestr(selected, astate) : "N/A",
+		       up ? system : "N/A",
+		       up ? port : 0,
+		       up ? key : 0);
+	}
+
+free_json:
+	json_decref(dump_json);
+	return err;
+}
+
 static int stateview_process_reply(char *reply)
 {
 	return stateview_json_process(reply);
+}
+
+static int stateview_process_reply_advanced(char *reply)
+{
+	return stateview_json_process_advanced(reply);
 }
 
 static int state_json_port_present(char *dump, const char *port_devname)
@@ -591,6 +758,12 @@ static int call_method_state_stateview(struct teamdctl *tdc,
 				       int argc, char **argv)
 {
 	return stateview_process_reply(teamdctl_state_get_raw(tdc));
+}
+
+static int call_method_state_stateview_advanced(struct teamdctl *tdc,
+				       int argc, char **argv)
+{
+	return stateview_process_reply_advanced(teamdctl_state_get_raw(tdc));
 }
 
 static int call_method_port_add(struct teamdctl *tdc,
@@ -659,6 +832,7 @@ enum id_command_type {
 	ID_CMDTYPE_S,
 	ID_CMDTYPE_S_D,
 	ID_CMDTYPE_S_V,
+	ID_CMDTYPE_S_V_A,
 	ID_CMDTYPE_S_I,
 	ID_CMDTYPE_S_I_G,
 	ID_CMDTYPE_S_I_S,
@@ -725,6 +899,12 @@ static struct command_type command_types[] = {
 		.parent_id = ID_CMDTYPE_S,
 		.name = "view",
 		.call_method = call_method_state_stateview,
+	},
+	{
+		.id = ID_CMDTYPE_S_V_A,
+		.parent_id = ID_CMDTYPE_S,
+		.name = "view-advanced",
+		.call_method = call_method_state_stateview_advanced,
 	},
 	{
 		.id = ID_CMDTYPE_S_I,
