@@ -39,6 +39,9 @@ To do passive load balancing, runner only sets up BPF hash function which will d
 .PP
 .BR "lacp "\(em
 Implements 802.3ad LACP protocol. Can use same Tx port selection possibilities as loadbalance runner.
+.PP
+.BR "ttdp "\(em
+Implements IEC61375-2-5 TTDP HELLO protocol.
 .RE
 .TP
 .BR "notify_peers.count " (int)
@@ -93,6 +96,9 @@ ARP requests are sent through a port. If an ARP reply is received, the link is c
 .PP
 .BR "nsna_ping "\(em
 Similar to the previous, except that it uses IPv6 Neighbor Solicitation / Neighbor Advertisement mechanism. This is an alternative to arp_ping and becomes handy in pure-IPv6 environments.
+.PP
+.BR "ttdp "\(em
+Uses IEC61375 TTDP HELLO.
 .RE
 .TP
 .BR "ports " (object)
@@ -278,6 +284,41 @@ Default:
 .BR "0"
 .RE
 .PP
+.SH TTDP RUNNER SPECIFIC OPTIONS
+.TP
+.BR "runner.notify_peers.count " (int)
+Inherited from the activebackup mode. In order to follow IEC61375-2-5, set to 0.
+.TP
+.BR "runner.mcast_rejoin.count " (int)
+Inherited from the activebackup mode. In order to follow IEC61375-2-5, set to 0.
+.TP
+.BR "runner.hwaddr_policy " (string)
+Inherited from the activebackup mode. The ttdp runner adds two new values for this option:
+.RS 7
+.PP
+.BR "first "\(em
+In this mode, the team device will assume the MAC address of the first member port added to it (which should be the first port mentioned in the configuration file). After this, no MAC address changes are done.
+.PP
+.BR "fixed "\(em
+In this mode, the team device will use the MAC address specified in the teamd configuration file with the "hwaddr" directive, while each member port will use its\' real address. No changes are made otherwise. Either this mode or "first" should be used for TTDP, as MAC address handling is left unspecified in the standard, and the other hwaddr policies are likely to cause confusion and breakage.
+.RE
+.TP
+.BR "runner.chassis_hwaddr " (string)
+Sets the MAC address used in the mandatory LLDP Chassis TLV sent in TTDP HELLO frames. IEC61375-2-5:2014 mandates that this TLV is included. Required.
+.TP
+.BR "runner.identity_hwaddr " (string)
+The MAC address used to identify this ETBN. This is copied to the "srcId" field in transmitted HELLO packets. Optional. May be specified either in the link watcher scope or here, in which case the this takes precedence and all member port link watchers inherit the value.
+.TP
+.BR "runner.local_uuid " (string)
+Local consist UUID of the consist that this ETBN is in. Sent in HELLO frames, determines consist identity. Must be in the regular UUID format like "99999999-8888-7777-aabb-ccccddddeeee"; this is encoded in big-endian format. Required, either here or in the link watcher scope. If specified only here, all member port link watchers inherit this value. If specified in both scopes, link watcher scope take precedence.
+.TP
+.BR "runner.silent " (int)
+If set to 2, disables all IPC communication; if set to 1, disables outbound IPC communication (the runner does not send updates, but still listens for IPC communication). If set to 0, two-way IPC communication is enabled. Optional.
+.RS 7
+.PP
+Default:
+.BR "0"
+.RE
 .SH ETHTOOL LINK WATCH SPECIFIC OPTIONS
 .TP
 .BR "link_watch.delay_up "| " ports.PORTIFNAME.link_watch.delay_up " (int)
@@ -368,6 +409,95 @@ Default:
 .TP
 .BR "link_watch.target_host "| " ports.PORTIFNAME.link_watch.target_host " (hostname)
 Hostname to be converted to IPv6 address which will be filled into NS packet as target address.
+.PP
+.SH TTDP LINK WATCH SPECIFIC OPTIONS
+.TP
+.BR "link_watch.slow_interval "| " ports.PORTIFNAME.link_watch.slow_interval " (int)
+Time (in ms) between transmissions in SLOW mode. Optional.
+.RS 7
+.PP
+Default:
+.BR 100
+.RE
+.TP
+.BR "link_watch.fast_interval "| " ports.PORTIFNAME.link_watch.fast_interval " (int)
+Time (in ms) between transmissions in FAST mode. Optional.
+.RS 7
+.PP
+Default:
+.BR 15
+.RE
+.TP
+.BR "link_watch.slow_timeout "| " ports.PORTIFNAME.link_watch.slow_timeout " (int)
+Maximum time (in ms) to wait for a packet, before recovery mode is entered and transmission speed is changed to FAST. Optional.
+.RS 7
+.PP
+Default:
+.BR 130
+.RE
+.TP
+.BR "link_watch.fast_timeout "| " ports.PORTIFNAME.link_watch.fast_timeout " (int)
+Maximum time (in ms) to wait for a packet in recovery mode. After this runs out, we consider the link logically DOWN. Optional.
+.RS 7
+.PP
+Default:
+.BR 45
+.RE
+.TP
+.BR "link_watch.link_state_delay_up "| " ports.PORTIFNAME.link_watch.link_state_delay_up " (int)
+Minimum time (in ms) that actual physical link status ("ethtool status") must be UP before the link watcher considers the link physically UP and reports it as such. Used to counter links that keep toggling on and off. Optional.
+.RS 7
+.PP
+Default:
+.BR 0
+.RE
+.TP
+.BR "link_watch.link_state_delay_down "| " ports.PORTIFNAME.link_watch.link_state_delay_down " (int)
+Same as above, but for physical link DOWN status. For instance, if this is set to 100, a link going down physically and then coming back up within 100 ms is not reported as having come down at all (though logical link status, as controlled by the _timeout fields above, might change due to missed HELLO packets during this time). Optional.
+.RS 7
+.PP
+Default:
+.BR 0
+.RE
+.TP
+.BR "link_watch.local_uuid "| " ports.PORTIFNAME.link_watch.local_uuid " (string)
+Local consist UUID of the consist that this ETBN is in. Sent in HELLO frames, determines consist identity. Must be in the regular UUID format like "99999999-8888-7777-aabb-ccccddddeeee"; this is encoded in big-endian format. Required, either here or in the runner scope; if both, the value specified here takes precedence.
+.TP
+.BR "link_watch.identify_hwaddr "| " ports.PORTIFNAME.link_watch.identify_hwaddr " (string)
+The MAC address to use to identify this ETBN. This is copied to the "srcId" field in transmitted HELLO packets. Optional, may be specified either here or in the runner scope, in which case the former takes precedence. If not specified at all, the address of the team device is used, which may cause strange behavior.
+.TP
+.BR "link_watch.direction "| " ports.PORTIFNAME.link_watch.direction " (int)
+TTDP direction of this individual port. Transmitted on the wire and determines a lot of things in TTDP. Optional, but if not set here, must be set in the runner scope (and that value is then used for all member links).
+.TP
+.BR "link_watch.line "| " ports.PORTIFNAME.link_watch.line " (string)
+TTDP link number of this individual port. Transmitted on the wire and determines a lot of things in TTDP. Required, must be "a", "b", "c" or "d" (not case sensitive).
+.TP
+.BR "link_watch.initial_mode "| " ports.PORTIFNAME.link_watch.initial_mode " (int)
+Determines which transmission mode this port starts up in. Use 1 for regular SLOW startup, and 2 to start in FAST mode. This may change the behavior of any other ETBNs that are already up as we\'re starting up. Optional.
+.RS 7
+.PP
+Default:
+.BR 1
+.RE
+.TP
+.BR "link_watch.fast_failed_recovery_mode "| " ports.PORTIFNAME.link_watch.fast_failed_recovery_mode " (bool)
+Determines what to do when we leave (fail) recovery mode due to not hearing from any neighbor. The default is to return to SLOW mode, which may delay actual recovery. Setting this to true stays in FAST mode instead. Optional.
+.RS 7
+.PP
+Default:
+.BR "false"
+.RE
+.TP
+.BR "link_watch.immediate_timer_start_mode "| " ports.PORTIFNAME.link_watch.immediate_timer_start_mode " (bool)
+Determines the startup behavior of the timers used for packet transmission (there is one SLOW timer and one FAST timer, only one of which runs at any given time). If this option is set to false, the initial timer interval is equal to the actual timer interval. In other words, if a change to the FAST transmission mode is decided upon at time t=0, the first FAST mode packet will be transmitted at t=fast_interval, the next at t=2*fast_interval, and so on. If this setting set to true, the initial interval is set to 0, so that in this example, the initial packet is transmitted immediately at t=0, the next one at t=fast_interval, and so on. Optional.
+.RS 7
+.PP
+Default:
+.BR "false"
+.RE
+.TP
+.BR "link_watch.strict_peer_recv_status "| " ports.PORTIFNAME.link_watch.strict_peer_recv_status " (bool)
+Determines whether the link watcher requires its\' neighbor (peer) to acknowledge its existence by setting the corresponding bits in the peer\'s recvStatus field of HELLO frame to \'10\' before considering the link as logically up. If this option is set to false, these bits are ignored and only receiving HELLo frames from the neighbor suffices to consider the link logically up.
 .SH EXAMPLES
 .PP
 .nf

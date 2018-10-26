@@ -274,6 +274,9 @@ bool team_is_our_port(struct team_handle *th, uint32_t port_ifindex);
 int team_carrier_set(struct team_handle *th, bool carrier_up);
 int team_carrier_get(struct team_handle *th, bool *carrier_up);
 int team_link_set(struct team_handle *th, int ifindex, bool link_up);
+/*
+int team_link_state_set(struct team_handle *th, int ifindex, int new_state);
+*/
 int team_hwaddr_set(struct team_handle *th, uint32_t ifindex,
 		    const char *addr, unsigned int addr_len);
 int team_hwaddr_get(struct team_handle *th, uint32_t ifindex,
