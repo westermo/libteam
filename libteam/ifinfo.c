@@ -323,11 +323,13 @@ int ifinfo_event_handler(struct nl_msg *msg, void *arg)
 	switch (nlmsg_hdr(msg)->nlmsg_type) {
 	case RTM_NEWLINK:
 		if (nl_msg_parse(msg, &event_handler_obj_input_newlink, th) < 0)
-			err(th, "Unknown message type.");
+			// dbg(th, "Unknown message type.");
+			;
 		break;
 	case RTM_DELLINK:
 		if (nl_msg_parse(msg, &event_handler_obj_input_dellink, th) < 0)
-			err(th, "Unknown message type.");
+			// dbg(th, "Unknown message type.");
+			;
 		break;
 	default:
 		return NL_OK;
@@ -354,7 +356,8 @@ static int valid_handler(struct nl_msg *msg, void *arg)
 		return NL_OK;
 
 	if (nl_msg_parse(msg, &valid_handler_obj_input_newlink, th) < 0)
-		err(th, "Unknown message type.");
+		// err(th, "Unknown message type.");
+		;
 	return NL_OK;
 }
 

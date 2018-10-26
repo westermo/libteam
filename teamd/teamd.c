@@ -65,6 +65,7 @@ static const struct teamd_runner *teamd_runner_list[] = {
 	&teamd_runner_activebackup,
 	&teamd_runner_loadbalance,
 	&teamd_runner_lacp,
+	&teamd_runner_ttdp
 };
 
 #define TEAMD_RUNNER_LIST_SIZE ARRAY_SIZE(teamd_runner_list)
@@ -270,7 +271,7 @@ static int handle_period_fd(int fd)
 		return -EINVAL;
 	}
 	if (exp > 1)
-		teamd_log_warn("some periodic function calls missed (%" PRIu64 ")",
+		teamd_log_warn("fd %d: some periodic function calls missed (%" PRIu64 ")", fd,
 			       exp - 1);
 	return 0;
 }
@@ -1454,7 +1455,7 @@ static int teamd_start(struct teamd_context *ctx, enum teamd_exit_code *p_ret)
 	int err = 0;
 
 	if (getuid() == 0)
-		teamd_log_warn("This program is not intended to be run as root.");
+		teamd_log_dbg("This program is not intended to be run as root.");
 
 	if (daemon_reset_sigs(-1) < 0) {
 		teamd_log_err("Failed to reset all signal handlers.");
