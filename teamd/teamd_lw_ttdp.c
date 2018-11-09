@@ -361,7 +361,7 @@ struct ttdp_hello_tlv {
 	u_int32_t version;					/* HELLO TLV version, default: 0x01000000 */
 	u_int32_t lifeSign;					/* sequence number (increases) */
 	u_int32_t etbTopoCnt;				/* topo counter; CRC32 of the TND */
-	u_int8_t vendor[32];				/* "Westermo" */
+	u_int8_t vendor[32];				/* Vendor specific info */
 	u_int8_t recvStatuses;				/* receive line A-D statuses (bitfield, 2 bits
 										 *  per line, A to the left, see IEC61375-2-5:2014
 										 *  section 8.7.5) */
@@ -399,8 +399,6 @@ static const uint8_t ttdp_hello_tlv_oui[3] = { 0x20, 0x0E, 0x95 };
 /* All TTDP HELLO frames go here */
 static const uint8_t ttdp_hello_destination_mac[6] =
 	{ 0x01, 0x80, 0xC2, 0x00, 0x00, 0x0E };
-/* \\/ */
-static const char* ttdp_hello_tlv_vendor = "Westermo";
 
 /* Timer callbacks */
 /* Send in slow mode - 100 ms default */
@@ -867,6 +865,10 @@ static int lw_ttdp_load_options(struct teamd_context *ctx,
 	/* copy chassis address from runner configuration */
 	memcpy(ttdp_ppriv->chassis_hwaddr, ab->chassis_hwaddr, sizeof (ttdp_ppriv->chassis_hwaddr));
 
+	/* copy vendor info from runner configuration and ensure it is 0-terminated */
+	memcpy(ttdp_ppriv->vendor_info, ab->vendor_info, sizeof (ttdp_ppriv->vendor_info));
+	ttdp_ppriv->vendor_info[sizeof(ttdp_ppriv->vendor_info)-1] = 0;
+
 	/* check that timer intervals are sane */
 	if (timespec_is_zero(&ttdp_ppriv->fast_interval) || timespec_is_zero(&ttdp_ppriv->slow_interval)) {
 		teamd_log_err("TTDP: Error, timer intervals not sane");
@@ -1015,7 +1017,13 @@ static void construct_default_frame(struct ab* parent, struct lw_ttdp_port_priv 
 	out->hello_tlv.version = htonl(0x01000000);
 	out->hello_tlv.lifeSign = htonl((ttdp_ppriv->lifesign)++);
 	out->hello_tlv.etbTopoCnt = parent->etb_topo_counter;
-	memcpy(out->hello_tlv.vendor, ttdp_hello_tlv_vendor, strlen(ttdp_hello_tlv_vendor)+1);
+
+	/* We must ensure that the vendor string is zero terminated and -padded */
+	memset(out->hello_tlv.vendor, 0, sizeof(out->hello_tlv.vendor));
+	memcpy(out->hello_tlv.vendor, ttdp_ppriv->vendor_info, strnlen(ttdp_ppriv->vendor_info,
+		sizeof(ttdp_ppriv->vendor_info)));
+	out->hello_tlv.vendor[sizeof(out->hello_tlv.vendor)-1] = 0;
+
 	out->hello_tlv.recvStatuses = parent->port_statuses_b;
 	out->hello_tlv.timeoutSpeed = 0; /* Set in lw_ttdp_send() / lw_ttdp_send_fast() */
 	//memcpy(&(out->hello_tlv.srcId), source_addr.sll_addr, 6);
@@ -2007,6 +2015,14 @@ static int lw_ttdp_failed_crcs_get(struct teamd_context *ctx,
 	return 0;
 }
 
+static int lw_ttdp_vendor_info_get(struct teamd_context *ctx,
+				   struct team_state_gsc *gsc,
+				  void *priv) {
+	struct lw_ttdp_port_priv* ttdp_ppriv = priv;
+	gsc->data.str_val.ptr = ttdp_ppriv->vendor_info;
+	return 0;
+}
+
 static int lw_ttdp_dump_frames_set(struct teamd_context *ctx,
 					 struct team_state_gsc *gsc,
 					 void *priv) {
@@ -2349,6 +2365,16 @@ static const struct teamd_state_val lw_ttdp_state_vals[] = {
 		.getter = lw_ttdp_force_disabled_get,
 		.setter = lw_ttdp_force_disabled_set,
 	},
+	/* Value of the "vendor specific" field in transmitted HELLO frames. This
+	 * can be set using the runner-scope configuration option
+	 * "runner.vendor_info", but only takes effect on startup, and is then set
+	 * in all of that runner's child linkwatchers. Up to 32 characters including
+	 * a terminating zero byte are available. Read-only. */
+	{
+		.subpath = "vendor_info",
+		.type = TEAMD_STATE_ITEM_TYPE_STRING,
+		.getter = lw_ttdp_vendor_info_get,
+	}
 };
 
 const struct teamd_link_watch teamd_link_watch_ttdp = {

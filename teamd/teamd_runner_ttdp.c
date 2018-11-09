@@ -232,7 +232,7 @@ static int detect_neigh_node_recovery(struct teamd_context *ctx,
 	/* If a neighbor node with the same topocount as we have has come up
 	 * next to us, we can move to FIXED MIDDLE. Do this only if the neighbor
 	 * is not inhibited itself.
-	 * 
+	 *
 	 * Optionally, we could also do this regardless of anything if the node is
 	 * the same one that we had previously, but for now we don't do this since
 	 * there is no good way to guarantee that we only get that node, and not any
@@ -1362,6 +1362,17 @@ static int ab_load_config(struct teamd_context *ctx, struct ab *ab)
 		ab->neighbor_agreement_mode = TTDP_NEIGH_AGREE_MODE_DEFAULT;
 	}
 
+	err = teamd_config_string_get(ctx, &tmpstr, "$.runner.vendor_info");
+	memset(ab->vendor_info, 0, sizeof(ab->vendor_info));
+	if (err) {
+	  teamd_ttdp_log_infox(ctx->team_devname, "TTDP: Vendor info not set, defaulting to \"%s\".", TTDP_VENDOR_INFO_DEFAULT);
+	  memcpy(ab->vendor_info, TTDP_VENDOR_INFO_DEFAULT, sizeof(ab->vendor_info));
+	}
+	else {
+	  teamd_ttdp_log_infox(ctx->team_devname, "Vendor info set to \"%s\".", tmpstr);
+	  memcpy(ab->vendor_info, tmpstr, sizeof(ab->vendor_info));
+	}
+
 	return 0;
 }
 
@@ -2001,7 +2012,7 @@ static const struct teamd_state_val ab_state_vals[] = {
 		.getter = ttdp_inaugurated_get,
 		.setter = ttdp_inaugurated_set,
 	},
-	/* String, says if the aggregate is in "DISCARDING" or "FORWARDING" mode. 
+	/* String, says if the aggregate is in "DISCARDING" or "FORWARDING" mode.
 	 * This is related to end node management. Read-only. */
 	{
 		.subpath = "ttdp_agg_state",

@@ -50,6 +50,8 @@
 #define TTDP_NEIGH_AGREE_MODE_SINGLE 1
 #define TTDP_NEIGH_AGREE_MODE_DEFAULT TTDP_NEIGH_AGREE_MODE_SINGLE
 
+#define TTDP_VENDOR_INFO_DEFAULT "UNSPECIFIED"
+
 #include "teamd_link_watch.h"
 
 /* FIXME: if this is changed, teamd_lw_ttdp needs to read its config better.
@@ -137,6 +139,7 @@ struct lw_ttdp_port_priv {
 	uint8_t local_uuid[16];
 	/* String version of the above - set on configuration load. */
 	char local_uuid_str[37];
+	char vendor_info[32];
 
 	/* Buffer to hold the string value of the current topocount. This is set by
 	 * the getter function and almost always outdated, except for immediately
@@ -350,7 +353,10 @@ struct ab {
 	char fixed_elected_neighbor_topocnt_str[12];
 	char neighbor_agreement_str[4];
 
-	/* Buffer used for the port_statuses statevar, up to 9 chars per port. Also
+	/* Vendor specific information string */
+	char vendor_info[32];
+
+	/* buffer used for the port_statuses statevar, up to 9 chars per port. Also
 	 * set by the statevar getter. */
 	char port_statuses_str[(9*4)+1];
 
@@ -418,7 +424,7 @@ struct ab {
 	 * - no longer detect a neighbor, then we set this to TRUE. */
 	bool shortening_detected;
 	/* Conversely, we set this to TRUE when we detect lengthening. This can also
-	 * only be detected on the end nodes while we're on the aggregate level 
+	 * only be detected on the end nodes while we're on the aggregate level
 	 * (however, higher up in the 61375-2-5 stack we can detect this on every
 	 * node). We detect a few different kinds of lengthening, and intend to be
 	 * compatible with -2-5 in this regard. */
