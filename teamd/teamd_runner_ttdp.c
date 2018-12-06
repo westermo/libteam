@@ -1294,8 +1294,14 @@ static int ab_load_config(struct teamd_context *ctx, struct ab *ab)
 
 	err = teamd_config_string_get(ctx, &tmpstr, "$.runner.chassis_hwaddr");
 	if (err) {
-		teamd_log_err("TTDP: Error, could not read chassis_hwaddr, aborting");
-		return 1;
+		if (ab->identity_hwaddr_set) {
+			teamd_ttdp_log_infox(ctx->team_devname, "Chassis address not set, using identity instead (runner).");
+			memcpy(ab->chassis_hwaddr, ab->identity_hwaddr, ctx->hwaddr_len);
+			memcpy(ab->chassis_hwaddr_str, ab->identity_hwaddr_str, sizeof(ab->chassis_hwaddr_str));
+		} else {
+			teamd_log_err("TTDP: Error, could not read chassis_hwaddr, aborting");
+			return 1;
+		}
 	} else {
 		char* tempmac;
 		unsigned int templen = 0;
