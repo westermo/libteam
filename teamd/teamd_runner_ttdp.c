@@ -2087,36 +2087,6 @@ static int on_initial_timer(struct teamd_context *ctx, int events, void *priv) {
 	return 0;
 }
 
-/* FIXME this is to be removed from here */
-static int disable_stp_in_bridge(const char* brname, struct teamd_context *ctx) {
-	int sd, ret = 0;
-	struct ifreq ifr;
-	unsigned long args[4];
-
-	sd = socket(AF_INET, SOCK_STREAM, 0);
-	if (sd < 0) {
-		teamd_log_warn("Failed creating socket for communicating bridge port changes");
-		return 1;
-	}
-
-	memset(&ifr, 0, sizeof(ifr));
-	ifr.ifr_data = (char *)&args;
-	strncpy(ifr.ifr_name, brname, sizeof(ifr.ifr_name));
-	args[0] = (unsigned long) 19; /* BRCTL_SET_STP_PORT_DIS from setupd */
-	args[1] = (unsigned long) ctx->ifindex;
-	args[2] = (unsigned long) sizeof(args);
-	args[3] = 0;
-
-	ret = ioctl(sd, SIOCDEVPRIVATE, &ifr);
-	close(sd);
-
-	if (ret < 0) {
-		teamd_log_warn("Failed SIOCDEVPRIVATE to bridge for %s", ctx->team_devname);
-		return 1;
-	}
-	return 0;
-}
-
 static int ab_init(struct teamd_context *ctx, void *priv)
 {
 	struct ab *ab = priv;
@@ -2198,8 +2168,7 @@ static int ab_init(struct teamd_context *ctx, void *priv)
 		);
 	teamd_loop_callback_enable(ctx, ttdp_runner_oneshot_initial_agg_state_name, ab);
 
-	/* don't let spanning-tree ruin our day */
-	return disable_stp_in_bridge("br0", ctx);
+	return 0;
 
 event_watch_unregister:
 	teamd_event_watch_unregister(ctx, &ab_event_watch_ops, ab);
