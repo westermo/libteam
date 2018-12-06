@@ -1966,7 +1966,17 @@ static const struct teamd_state_val ab_state_vals[] = {
 	 * things to work properly. The format is INT, so it will unfortunately
 	 * be converted to decimal (but see below). If a value is written here, it
 	 * will be used as the current topo counter, but will very likely be
-	 * overwritten quite soon following the next re-inauguration. */
+	 * overwritten by the rest of the IEC61375 stack quite soon following the
+	 * next re-inauguration.
+	 * 
+	 * This is how the IEC61375 stack ensures that a correct topocounter is sent
+	 * by this code in TTDP HELLO frames. Since the state variable uses the
+	 * teamd type TEAMD_STATE_ITEM_TYPE_INT, which is handled as a "long"
+	 * internally, special care needs to be taken on architectures where "long"
+	 * is 32 bits; in these cases, if the topocount has the highest bit set,
+	 * this value is to be set as a signed negative number in decimal form.
+	 * Basically, whatever this is set to will be read as a signed long in
+	 * decmal format. */
 	{
 		.subpath = "etb_topocount",
 		.type = TEAMD_STATE_ITEM_TYPE_INT,
