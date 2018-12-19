@@ -50,6 +50,19 @@
 #define TTDP_NEIGH_AGREE_MODE_SINGLE 1
 #define TTDP_NEIGH_AGREE_MODE_DEFAULT TTDP_NEIGH_AGREE_MODE_SINGLE
 
+/* this has not been tested completely and is likely not needed */
+//#define SET_USER_LINK
+/* Define this to use port disabling/enabling in the aggregate. Without it,
+ * we will not touch underlying aggregate functions. */
+#define SET_PORT_ENABLED_DISABLED
+/* Define this to force-enable all ports when going to FORWARDING mode. */
+//#define FORCE_PORT_ENABLED_IN_FORWARDING
+/* Define this to force-disable all ports when going to DISCARDING mode. */
+#define FORCE_PORT_DISABLED_IN_DISCARDING
+
+#define TTDP_NEIGH_PORT_DISAGREES 1
+#define TTDP_NEIGH_PORT_AGREES 2
+
 #define TTDP_VENDOR_INFO_DEFAULT "UNSPECIFIED"
 
 #include "teamd_link_watch.h"

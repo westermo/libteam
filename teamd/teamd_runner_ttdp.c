@@ -142,11 +142,15 @@ teamd_ttdp_log_infox(ctx->team_devname, "Move to FORWARDING");
 			/* don't set ports with a known zero neighbor as enabled... */
 			// for (int i = 0; i < TTDP_MAX_PORTS_PER_TEAM; ++i) {
 			// 	if ((ab->ifindex_by_line[i] == ifindex) && !is_neighbor_none(&ab->neighbors[i])) {
-			 		team_set_port_enabled(ctx->th, ifindex, true);
+		#if defined FORCE_PORT_ENABLED_IN_FORWARDING && defined SET_PORT_ENABLED_DISABLED
+			team_set_port_enabled(ctx->th, ifindex, true);
+		#endif
 			// 	}
 			// }
 		} else if (ab->neighbor_agreement_mode == TTDP_NEIGH_AGREE_MODE_MULTI) {
+		#ifdef SET_PORT_ENABLED_DISABLED
 			team_set_port_enabled(ctx->th, ifindex, true);
+		#endif
 		}
 		//team_set_port_user_linkup(ctx->th, ifindex, true);
 		//teamd_ttdp_log_dbgx(ctx->team_devname, "set %d FORWARDING: %d", ifindex, err);
@@ -160,7 +164,9 @@ static void all_ports_discarding(struct teamd_context *ctx, struct ab* ab) {
 	ab->is_discarding = true;
 	team_for_each_port(port, ctx->th) {
 		uint32_t ifindex = team_get_port_ifindex(port);
+	#if defined FORCE_PORT_DISABLED_IN_DISCARDING && defined SET_PORT_ENABLED_DISABLED
 		team_set_port_enabled(ctx->th, ifindex, false);
+	#endif
 		//team_set_port_user_linkup(ctx->th, ifindex, false);
 		//teamd_ttdp_log_dbgx(ctx->team_devname, "set %d BLOCKING: %d", ifindex, err);
 	}
@@ -465,7 +471,9 @@ static int ab_hwaddr_policy_first_port_added(struct teamd_context *ctx,
 		}
 		teamd_ttdp_log_infox(ctx->team_devname, "set team address to that of first member port");
 	}
+#ifdef SET_PORT_ENABLED_DISABLED
 	//team_set_port_enabled(ctx->th, tdport->ifindex, false);
+#endif
 	return 0;
 }
 
@@ -637,13 +645,14 @@ static int ab_clear_active_port(struct teamd_context *ctx, struct ab *ab,
 	if (!tdport || !teamd_port_present(ctx, tdport))
 		return 0;
 	teamd_ttdp_log_dbgx(ctx->team_devname, "Clearing active port \"%s\".", tdport->ifname);
-
+#ifdef SET_PORT_ENABLED_DISABLED
 	err = team_set_port_enabled(ctx->th, tdport->ifindex, false);
 	if (err) {
 		teamd_log_err("%s: Failed to disable active port.",
 			      tdport->ifname);
 		return err;
 	}
+#endif
 	if (ab->hwaddr_policy->active_clear) {
 		err =  ab->hwaddr_policy->active_clear(ctx, ab, tdport);
 		if (err)
@@ -657,13 +666,14 @@ static int ab_set_active_port(struct teamd_context *ctx, struct ab *ab,
 			      struct teamd_port *tdport)
 {
 	int err;
-
+#ifdef SET_PORT_ENABLED_DISABLED
 	err = team_set_port_enabled(ctx->th, tdport->ifindex, true);
 	if (err) {
 		teamd_log_err("%s: Failed to enable active port.",
 			      tdport->ifname);
 		//return err;
 	}
+#endif
 /* Define MODE_ACTIVEBACKUP to have the behavior below. If not defined, we only
  * change active ports following elections and/or port state changes */
 #ifdef MODE_ACTIVEBACKUP
@@ -684,7 +694,9 @@ static int ab_set_active_port(struct teamd_context *ctx, struct ab *ab,
 
 err_set_active_port:
 err_hwaddr_policy_active_set:
+#ifdef SET_PORT_ENABLED_DISABLED
 	team_set_port_enabled(ctx->th, tdport->ifindex, false);
+#endif
 	return err;
 #else
 	return 0;
@@ -1022,7 +1034,7 @@ static int ab_link_watch_handler_internal(struct teamd_context *ctx, struct ab *
 		 * we know that we will still have a neighbor on the other side. */
 		int avail = 0;
 		for (int i = 0; i < ctx->port_obj_list_count; ++i) {
-			if (!is_neighbor_none(&ab->neighbors[i]) && (ab->neighbor_agreement[i] == 2))
+			if (!is_neighbor_none(&ab->neighbors[i]) && (ab->neighbor_agreement[i] == TTDP_NEIGH_PORT_AGREES))
 				avail++;
 		}
 		teamd_ttdp_log_dbgx(ctx->team_devname, "AGREE avail %d", avail);
@@ -1034,29 +1046,45 @@ static int ab_link_watch_handler_internal(struct teamd_context *ctx, struct ab *
 				/* We currently don't actively set user linkup/down, since this
 				 * may conflict with other features. FIXME. */
 				switch (ab->neighbor_agreement[i]) {
-					case 1:
+					case TTDP_NEIGH_PORT_DISAGREES:
 						/* this port disagrees - take it down */
-#ifdef SET_USER_LINK
+					#ifdef SET_PORT_ENABLED_DISABLED
 						team_set_port_enabled(ctx->th, ifindex, false);
+					#endif
+					#ifdef SET_USER_LINK
 						team_set_port_user_linkup(ctx->th, ifindex, false);
-#endif
+					#endif
 						break;
-					case 2:
+					case TTDP_NEIGH_PORT_AGREES:
 						/* this port agrees - ensure it is up */
-#ifdef SET_USER_LINK
 						if (ab->lines_heard[i] == true) {
-							team_set_port_user_linkup(ctx->th, ifindex, true);
+						#ifdef SET_PORT_ENABLED_DISABLED
 							team_set_port_enabled(ctx->th, ifindex, true);
+						#endif
+						#ifdef SET_USER_LINK
+							team_set_port_user_linkup(ctx->th, ifindex, true);
+						#endif
 						} else {
+						#ifdef SET_PORT_ENABLED_DISABLED
 							team_set_port_enabled(ctx->th, ifindex, false);
+						#endif
+						#ifdef SET_USER_LINK
 							team_set_port_user_linkup(ctx->th, ifindex, false);
+						#endif
 						}
-#endif
 						break;
 					case 0:
 					default:
 						break;
 				}
+			}
+		} else {
+			/* no ports can be used - disable everything */
+			for (int i = 0; i < ctx->port_obj_list_count; ++i) {
+				uint32_t ifindex = ab->ifindex_by_line[i];
+			#ifdef SET_PORT_ENABLED_DISABLED
+				team_set_port_enabled(ctx->th, ifindex, false);
+			#endif
 			}
 		}
 	}
@@ -1145,11 +1173,13 @@ static int ab_port_added(struct teamd_context *ctx,
 		return err;
 	}
 	/* Newly added ports are disabled */
+#ifdef SET_PORT_ENABLED_DISABLED
 	err = team_set_port_enabled(ctx->th, tdport->ifindex, false);
 	if (err) {
 		teamd_log_err("%s: Failed to disable port.", tdport->ifname);
 		return TEAMD_ENOENT(err) ? 0 : err;
 	}
+#endif
 
 	if (ab->hwaddr_policy->port_added)
 		return ab->hwaddr_policy->port_added(ctx, ab, tdport);
@@ -1480,7 +1510,7 @@ static int remote_inhibition_update_work(struct teamd_context *ctx,
 		} else {
 			ab->remote_inhibition_actual = TTDP_LOGIC_FALSE;
 			for (int i = 0; i < TTDP_MAX_PORTS_PER_TEAM; ++i) {
-				if (ab->neighbor_agreement[i] == 2) {
+				if (ab->neighbor_agreement[i] == TTDP_NEIGH_PORT_AGREES) {
 					if (ab->neighbors[i].neighbor_inhibition_state == TTDP_LOGIC_TRUE) {
 						ab->remote_inhibition_actual = TTDP_LOGIC_TRUE;
 						break;
