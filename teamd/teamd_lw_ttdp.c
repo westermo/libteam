@@ -1721,7 +1721,6 @@ static int lw_ttdp_port_added(struct teamd_context *ctx,
 	ttdp_ppriv->local_recovery_mode = 0;
 	ttdp_ppriv->silent = false;
 	ttdp_ppriv->lifesign = 0;
-	ttdp_ppriv->local_phy_link_up = false;
 	ttdp_ppriv->local_phy_link_event_delayed = false;
 	ttdp_ppriv->local_ttdp_link_up = false;
 	ttdp_ppriv->neighbor_inhibit = TTDP_LOGIC_UNDEFINED;
@@ -1823,6 +1822,7 @@ static int lw_ttdp_port_added(struct teamd_context *ctx,
 		ab->line_timeout_value_update_func(ctx, ab);
 	}
 
+	ttdp_ppriv->local_phy_link_up = team_is_port_link_up(tdport->team_port);
 	return err;
 }
 
