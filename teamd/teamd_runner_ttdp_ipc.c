@@ -401,7 +401,8 @@ int send_tcnd_identity_message(struct teamd_context *ctx, void* priv) {
 	struct ab *ab = priv;
 	if (!(ab->identity_hwaddr_set) || !(ab->local_uuid_set)) {
 		teamd_ttdp_log_warnx(ctx->team_devname, "Could not send identity message"
-			" to TCNd: not all values configued");
+			" to TCNd: not all values configued: (identity hwaddr:%d local uuid:%d)",
+			ab->identity_hwaddr_set, ab->local_uuid_set);
 		return 1;
 	}
 	if (ab->tcnd_sockfd > 0) {

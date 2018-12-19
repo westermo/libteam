@@ -1308,7 +1308,7 @@ static int parse_ttdp_frame(const uint8_t* frame, size_t frame_len, struct ttdp_
 	int tlv_idx;
 	for (tlv_idx = 0; tlv_idx < 10; ++tlv_idx) {
 		if (offset >= frame_len) {
-			teamd_ttdp_log_infox(ttdp_ppriv, "Malformed packet!");
+			teamd_ttdp_log_dbgx(ttdp_ppriv, "Malformed packet, offset %zu would be outside length %zu", offset, frame_len);
 			return 1;
 		}
 		uint16_t tlv_header = (frame[offset] << 8) | frame[offset+1];
@@ -1337,6 +1337,7 @@ static int parse_ttdp_frame(const uint8_t* frame, size_t frame_len, struct ttdp_
 					return 0;
 				}
 			case 0: /* EOF */
+				teamd_ttdp_log_dbgx(ttdp_ppriv, "Early EOF in HELLO frame, idx %d", tlv_idx);
 				return 1;
 			case 1:
 			case 2:
@@ -1346,6 +1347,7 @@ static int parse_ttdp_frame(const uint8_t* frame, size_t frame_len, struct ttdp_
 				break;
 		}
 	}
+	teamd_ttdp_log_dbgx(ttdp_ppriv, "No relevant TLVs in HELLO frame, idx %d", tlv_idx);
 	return 1;
 }
 
