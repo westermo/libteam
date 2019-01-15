@@ -67,6 +67,9 @@
 #define TTDP_NEIGH_PORT_DISAGREES 1
 #define TTDP_NEIGH_PORT_AGREES 2
 
+#define TTDP_INITIAL_MODE_SLOW 1
+#define TTDP_INITIAL_MODE_FAST 2
+
 #define TTDP_VENDOR_INFO_DEFAULT "UNSPECIFIED"
 
 #include "teamd_link_watch.h"

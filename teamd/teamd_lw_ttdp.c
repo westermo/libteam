@@ -1815,7 +1815,7 @@ static int lw_ttdp_port_added(struct teamd_context *ctx,
 
 	teamd_loop_callback_enable(ctx, TTDP_SOCKET_CB_NAME, ttdp_ppriv);
 
-	if (ttdp_ppriv->initial_mode == 2) {
+	if (ttdp_ppriv->initial_mode == TTDP_INITIAL_MODE_FAST) {
 		//teamd_ttdp_log_infox("Starting in fast mode");
 		teamd_ttdp_log_infox(ttdp_ppriv, "Starting in FAST transmission mode");
 		//teamd_loop_callback_enable(ctx, TTDP_PERIODIC_FAST_SEND_CB_NAME, ttdp_ppriv);
