@@ -43,7 +43,11 @@
 	? P : "ttdp-runner")
 #define teamd_ttdp_log_info(format, args...) daemon_log(LOG_INFO, format, ## args)
 #ifdef DEBUG
-#define teamd_ttdp_log_infox(P, format, args...) daemon_log(LOG_DEBUG, "%s: " format, TEAMNAME_OR_EMPTY(P), ## args)
+#define teamd_ttdp_log_infox(P, format, args...) do {\
+		struct timeval _debug_tv;\
+		gettimeofday(&_debug_tv, NULL);\
+		fprintf(stderr, "%s %ld.%ld :" format "\n", TEAMNAME_OR_EMPTY(P), _debug_tv.tv_sec, _debug_tv.tv_usec, ## args);\
+	} while (0)
 #define teamd_ttdp_log_dbg(P, format, args...) daemon_log(LOG_DEBUG, "%s: " format, TEAMNAME_OR_EMPTY(P), ## args)
 #define teamd_ttdp_log_dbgx(P, format, args...) daemon_log(LOG_DEBUG, "%s: " format, TEAMNAME_OR_EMPTY(P), ## args)
 #else
@@ -154,6 +158,11 @@ int socket_open(struct teamd_context *ctx, void *priv) {
 		teamd_ttdp_log_dbg(ctx->team_devname, "Closing socket first.");
 		socket_close(ctx, priv);
 		return 1;
+	}
+
+	if (initial_data_sent == 0) {
+		send_tcnd_identity_message(ctx, priv);
+		send_tcnd_snmp_gen_info(ctx, priv);
 	}
 
 	return 0;
@@ -624,16 +633,14 @@ int send_tcnd_snmp_gen_info(struct teamd_context *ctx, struct ab *ab) {
 
 	if (ab->tcnd_sockfd > 0) {
 		int err = write(ab->tcnd_sockfd, message, sizeof(message));
-		teamd_ttdp_log_infox(ctx->team_devname, "Sent SNMP gen info message to TCNd: %d", err);
-		initial_data_sent = 1;
-		return err;
-	} else {
-		teamd_ttdp_log_infox(ctx->team_devname, "TCNd socket not open, will try to reconnect");
-		socket_open(ctx, ab);
-		/* FIXME */
-		int err = write(ab->tcnd_sockfd, message, sizeof(message));
-		teamd_ttdp_log_infox(ctx->team_devname, "Sent SNMP gen info message to TCNd: %d", err);
-		return err;
+		if (err > 0) {
+			teamd_ttdp_log_infox(ctx->team_devname, "Sent SNMP gen info message to TCNd: %d", err);
+			initial_data_sent = 1;
+			return err;
+		}
 	}
+
+	teamd_ttdp_log_infox(ctx->team_devname, "TCNd socket error, could not send SNMP data");
+	return 1;
 }
 
