@@ -257,7 +257,7 @@ int handle_message(uint8_t type, uint8_t* payload, uint32_t payload_length,
 			break;
 		case 0x13:
 			/* PORTED */
-			teamd_ttdp_log_info(ctx->team_devname, "Received deprecated IPC message 0x13 (local inhibit flag), ignoring");
+			teamd_ttdp_log_dbg(ctx->team_devname, "Received deprecated IPC message 0x13 (local inhibit flag), ignoring");
 			// /* TCNd has a new locally set inhibition flag */
 			// if (payload_length != 1 || ab == NULL) {
 			// 	return 1;
