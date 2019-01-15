@@ -50,6 +50,10 @@
 #define TTDP_NEIGH_AGREE_MODE_SINGLE 1
 #define TTDP_NEIGH_AGREE_MODE_DEFAULT TTDP_NEIGH_AGREE_MODE_SINGLE
 
+/* If this is defined, receipt of a HELLO frame will restart any active
+ * physical link state down delay timer. */
+#define TTDP_PHYSICAL_LINK_STATE_OVERRIDE
+
 /* this has not been tested completely and is likely not needed */
 //#define SET_USER_LINK
 /* Define this to use port disabling/enabling in the aggregate. Without it,

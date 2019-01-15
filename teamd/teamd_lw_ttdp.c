@@ -1453,10 +1453,23 @@ static int lw_ttdp_receive(struct teamd_context *ctx, int events, void *priv) {
 		}
 
 		/* valid frame received */
+
+#ifdef TTDP_PHYSICAL_LINK_STATE_OVERRIDE
+		/* reset link down delay, if any */
+		if (ttdp_ppriv->local_phy_link_event_delayed) {
+			teamd_loop_callback_disable(ctx, TTDP_PERIODIC_LINK_STATE_DELAY_CB_NAME, priv);
+			teamd_ttdp_log_infox(ttdp_ppriv, "Resetting link state DOWN reporting delay due to HELLO frame");
+			teamd_loop_callback_timer_set(ctx,
+				TTDP_PERIODIC_LINK_STATE_DELAY_CB_NAME,
+				priv,
+				NULL,
+				&(ttdp_ppriv->link_state_delay_down));
+			teamd_loop_callback_enable(ctx, TTDP_PERIODIC_LINK_STATE_DELAY_CB_NAME, priv);
+		}
+#endif
+
 		if (ttdp_ppriv->local_recovery_mode) {
 			ttdp_ppriv->local_recovery_mode = 0;
-			/* cancel link down delay, if any */
-
 			/* reset recovery mode timers */
 			teamd_loop_callback_disable(ctx, TTDP_PERIODIC_FAST_TIMEOUT_CB_NAME, priv);
 			teamd_loop_callback_disable(ctx, TTDP_PERIODIC_SLOW_TIMEOUT_CB_NAME, priv);
