@@ -40,6 +40,7 @@
 #include <private/misc.h>
 #include <linux/netdevice.h>
 #include <ctype.h>
+#include <sys/time.h>
 #include "teamd.h"
 #include "teamd_link_watch.h"
 #include "teamd_config.h"
@@ -51,7 +52,11 @@ uint16_t frame_checksum(const uint8_t *cp, int len, int cisco, int out);
 #define IFNAME_OR_EMPTY(P) ((P && P->start.common.tdport && P->start.common.tdport->ifname)\
 	? P->start.common.tdport->ifname : "ttdp-lw")
 #ifdef DEBUG
-#define teamd_ttdp_log_infox(P, format, args...) daemon_log(LOG_DEBUG, "%s: " format, IFNAME_OR_EMPTY(P), ## args)
+#define teamd_ttdp_log_infox(P, format, args...) do {\
+		struct timeval _debug_tv;\
+		gettimeofday(&_debug_tv, NULL);\
+		fprintf(stderr, "%s %ld.%ld :" format "\n", IFNAME_OR_EMPTY(P), _debug_tv.tv_sec, _debug_tv.tv_usec, ## args);\
+	} while (0)
 #define teamd_ttdp_log_dbgx(P, format, args...) daemon_log(LOG_DEBUG, "%s: " format, IFNAME_OR_EMPTY(P), ## args)
 #else
 #define teamd_ttdp_log_infox(P, format, args...) do {} while (0)
