@@ -82,6 +82,13 @@ static struct timespec ttdp_runner_oneshot_timer = {
 	.tv_nsec = 0
 };
 
+static const char* ttdp_runner_periodic_neighbor_macs_name = 
+	"ttdp_runner_periodic_neighbor_macs";
+static struct timespec ttdp_runner_periodic_neighbor_macs_timer = {
+	.tv_sec = 0,
+	.tv_nsec = 100000000 /* 200 ms */
+};
+
 static const char* port_state_strings[] = {"ERROR", "FALSE", " TRUE", "UNDEF"};
 static int ab_link_watch_handler(struct teamd_context *ctx, struct ab *ab);
 static int ab_link_watch_handler_internal(struct teamd_context *ctx, struct ab *ab,
@@ -1714,6 +1721,13 @@ static int ttdp_topology_stop_set(struct teamd_context *ctx,
 		prev, next);
 	return 0;
 }
+static int ttdp_topology_stop_get(struct teamd_context *ctx,
+				    struct team_state_gsc *gsc,
+				    void *priv) {
+	struct ab *ab = priv;
+	gsc->data.int_val = (ab->receiving_topology_frames) ? 0 : 1;
+	return 0;
+}
 static int ttdp_topology_start_set(struct teamd_context *ctx,
 				    struct team_state_gsc *gsc,
 				    void *priv) {
@@ -1725,7 +1739,13 @@ static int ttdp_topology_start_set(struct teamd_context *ctx,
 		prev, next);
 	return 0;
 }
-
+static int ttdp_topology_start_get(struct teamd_context *ctx,
+				    struct team_state_gsc *gsc,
+				    void *priv) {
+	struct ab *ab = priv;
+	gsc->data.int_val = (ab->receiving_topology_frames) ? 1 : 0;
+	return 0;
+}
 static int ttdp_neighbor_data_req_set(struct teamd_context *ctx,
 				    struct team_state_gsc *gsc,
 				    void *priv) {
@@ -1982,7 +2002,7 @@ static const struct teamd_state_val ab_state_vals[] = {
 	{
 		.subpath = "poke_topology_stop",
 		.type = TEAMD_STATE_ITEM_TYPE_INT,
-		.getter = ttdp_runner_noop_setter,
+		.getter = ttdp_topology_stop_get,
 		.setter = ttdp_topology_stop_set,
 	},
 	/* Writing anything here lets the runner know that we're again receiving
@@ -1991,7 +2011,7 @@ static const struct teamd_state_val ab_state_vals[] = {
 	{
 		.subpath = "poke_topology_start",
 		.type = TEAMD_STATE_ITEM_TYPE_INT,
-		.getter = ttdp_runner_noop_setter,
+		.getter = ttdp_topology_start_get,
 		.setter = ttdp_topology_start_set,
 	},
 	/* Writing anything here results in an IPC message being sent that contains
@@ -2138,6 +2158,18 @@ static int on_initial_timer(struct teamd_context *ctx, int events, void *priv) {
 	return 0;
 }
 
+static int on_periodic_neighbor_macs_timer(struct teamd_context *ctx, int events, void *priv) {
+	/* Periodically send current neighbor status to the rest of the stack */
+	struct ab* ab = priv;
+	if (!ab)
+		return 1;
+
+	teamd_loop_callback_disable(ctx, ttdp_runner_periodic_neighbor_macs_name, ab);
+	teamd_workq_schedule_work(ctx, &ab->tcnd_notify_tcnd_workq);
+	teamd_loop_callback_enable(ctx, ttdp_runner_periodic_neighbor_macs_name, ab);
+	return 0;
+}
+
 static int ab_init(struct teamd_context *ctx, void *priv)
 {
 	struct ab *ab = priv;
@@ -2218,6 +2250,15 @@ static int ab_init(struct teamd_context *ctx, void *priv)
 		&ttdp_runner_oneshot_timer
 		);
 	teamd_loop_callback_enable(ctx, ttdp_runner_oneshot_initial_agg_state_name, ab);
+
+	teamd_loop_callback_timer_add_set(ctx,
+		ttdp_runner_periodic_neighbor_macs_name,
+		ab,
+		on_periodic_neighbor_macs_timer,
+		&ttdp_runner_periodic_neighbor_macs_timer,
+		&ttdp_runner_periodic_neighbor_macs_timer
+		);
+	teamd_loop_callback_enable(ctx, ttdp_runner_periodic_neighbor_macs_name, ab);
 
 	return 0;
 

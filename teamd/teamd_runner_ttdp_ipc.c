@@ -452,7 +452,7 @@ int send_tcnd_update_message(struct teamd_context *ctx, void* priv) {
 
 int send_tcnd_update_message_work(struct teamd_context *ctx,
 				      struct teamd_workq *workq) {
-	teamd_ttdp_log_infox(ctx->team_devname, "DELAYED SOCKET SEND");
+	// teamd_ttdp_log_infox(ctx->team_devname, "DELAYED SOCKET SEND");
 
 	struct ab *ab;
 	ab = get_container(workq, struct ab, link_watch_handler_workq);
