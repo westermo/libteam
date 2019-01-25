@@ -1399,7 +1399,7 @@ static int lw_ttdp_receive(struct teamd_context *ctx, int events, void *priv) {
 	int err = teamd_recvfrom(ttdp_ppriv->start.psr.sock, &buf, TTDP_HELLO_FRAME_SIZE_MAX, 0,
 			     (struct sockaddr *) &ll_from, sizeof(ll_from));
 	if (err <= 0) {
-		teamd_ttdp_log_dbgx(ttdp_ppriv, "Error %d from recvfrom", err);
+		teamd_ttdp_log_infox(ttdp_ppriv, "lw_ttdp_receive: Error %d from recvfrom", err);
 		return err;
 	}
 

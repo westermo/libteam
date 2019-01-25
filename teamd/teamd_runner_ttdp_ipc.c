@@ -46,7 +46,7 @@
 #define teamd_ttdp_log_infox(P, format, args...) do {\
 		struct timeval _debug_tv;\
 		gettimeofday(&_debug_tv, NULL);\
-		fprintf(stderr, "%s %ld.%ld :" format "\n", TEAMNAME_OR_EMPTY(P), _debug_tv.tv_sec, _debug_tv.tv_usec, ## args);\
+		daemon_log(LOG_INFO, "%s %ld.%ld :" format "\n", TEAMNAME_OR_EMPTY(P), _debug_tv.tv_sec, _debug_tv.tv_usec, ## args);\
 	} while (0)
 #define teamd_ttdp_log_dbg(P, format, args...) daemon_log(LOG_DEBUG, "%s: " format, TEAMNAME_OR_EMPTY(P), ## args)
 #define teamd_ttdp_log_dbgx(P, format, args...) daemon_log(LOG_DEBUG, "%s: " format, TEAMNAME_OR_EMPTY(P), ## args)
@@ -89,6 +89,8 @@ int socket_open(struct teamd_context *ctx, void *priv) {
 			return 1;
 		}
 
+		teamd_ttdp_log_infox(ctx->team_devname, "Got sockfd %d", sockfd);
+
 		/* set to non-blocking */
 		int flags = fcntl(sockfd, F_GETFL);
 		flags |= O_NONBLOCK;
@@ -116,9 +118,9 @@ int socket_open(struct teamd_context *ctx, void *priv) {
 			/* using GNU strerror_r */
 			errorstr = strerror_r(errno, errorbuf, 256);
 			if (errorstr) {
-				teamd_ttdp_log_infox(ctx->team_devname, "connect() failed when connecting to TCNd: %s", errorbuf);
+				teamd_ttdp_log_infox(ctx->team_devname, "connect() failed when connecting to TCNd: %d %s", err, errorbuf);
 			} else {
-				teamd_ttdp_log_infox(ctx->team_devname, "connect() failed when connecting to TCNd");
+				teamd_ttdp_log_infox(ctx->team_devname, "connect() failed when connecting to TCNd.");
 			}
 			/* don't abort here */
 		}
@@ -133,11 +135,10 @@ int socket_open(struct teamd_context *ctx, void *priv) {
 				/* using GNU strerror_r */
 				errorstr = strerror_r(errno, errorbuf, 256);
 				if (errorstr) {
-					teamd_ttdp_log_infox(ctx->team_devname, "connect() failed when connecting to TCNd: %s", errorbuf);
+					teamd_ttdp_log_infox(ctx->team_devname, "teamd_loop_callback_fd_add() failed when connecting to TCNd: %s", errorbuf);
 				} else {
-					teamd_ttdp_log_infox(ctx->team_devname, "connect() failed when connecting to TCNd");
+					teamd_ttdp_log_infox(ctx->team_devname, "teamd_loop_callback_fd_add() failed when connecting to TCNd");
 				}
-				return 1;
 			}
 
 			err = teamd_loop_callback_enable(ctx, TTDP_IPC_SOCKET_CB_NAME, ab);
@@ -310,6 +311,7 @@ int tcnd_socket_read_cb(struct teamd_context *ctx, int events, void *priv) {
 		(struct sockaddr*)&un_from,	sizeof(struct sockaddr_un));
 
 	if (err <= 0) {
+		teamd_ttdp_log_infox(ctx->team_devname, "tcnd_socket_read_cb 1: Error %d from recvfrom", err);
 		goto failed;
 	}
 
@@ -331,6 +333,9 @@ int tcnd_socket_read_cb(struct teamd_context *ctx, int events, void *priv) {
 		/* Skip this header */
 		err = teamd_recvfrom(ab->tcnd_sockfd, header, 4, MSG_DONTWAIT,
 			(struct sockaddr*)&un_from,	sizeof(struct sockaddr_un));
+		if (err <= 0) {
+			teamd_ttdp_log_infox(ctx->team_devname, "tcnd_socket_read_cb 2: Error %d from recvfrom", err);
+		}
 		if (length > 0) {
 			teamd_ttdp_log_dbg(ctx->team_devname, "Invalid TLV, ignoring it + next %u bytes", length);
 			/* Skip this message */
@@ -339,8 +344,11 @@ int tcnd_socket_read_cb(struct teamd_context *ctx, int events, void *priv) {
 			buf = malloc(MAX_RECV_BUF_SIZE);
 			while (left > 0) {
 				safe = min(left, (int)MAX_RECV_BUF_SIZE);
-				teamd_recvfrom(ab->tcnd_sockfd, buf, safe, MSG_DONTWAIT, (struct sockaddr*)&un_from,
+				err = teamd_recvfrom(ab->tcnd_sockfd, buf, safe, MSG_DONTWAIT, (struct sockaddr*)&un_from,
 					sizeof(struct sockaddr_un));
+				if (err <= 0) {
+					teamd_ttdp_log_infox(ctx->team_devname, "tcnd_socket_read_cb 3: Error %d from recvfrom", err);
+				}
 				left -= safe;
 			}
 			free(buf);
@@ -359,7 +367,10 @@ int tcnd_socket_read_cb(struct teamd_context *ctx, int events, void *priv) {
 		teamd_ttdp_log_dbg(ctx->team_devname, "Zero-length message OK.");
 		/* consume the header */
 		err = teamd_recvfrom(ab->tcnd_sockfd, header, 4, MSG_DONTWAIT,
-		(struct sockaddr*)&un_from,	sizeof(struct sockaddr_un));
+			(struct sockaddr*)&un_from,	sizeof(struct sockaddr_un));
+		if (err <= 0) {
+			teamd_ttdp_log_infox(ctx->team_devname, "tcnd_socket_read_cb 4: Error %d from recvfrom", err);
+		}
 
 		/* handle zero-length message */
 		return handle_message(type, NULL, 0, ctx, priv);
@@ -373,6 +384,9 @@ int tcnd_socket_read_cb(struct teamd_context *ctx, int events, void *priv) {
 	}
 	err = teamd_recvfrom(ab->tcnd_sockfd, buf, length, MSG_PEEK | MSG_DONTWAIT,
 		(struct sockaddr*)&un_from,	sizeof(struct sockaddr_un));
+	if (err <= 0) {
+		teamd_ttdp_log_infox(ctx->team_devname, "tcnd_socket_read_cb 5: Error %d from recvfrom", err);
+	}
 	teamd_ttdp_log_dbg(ctx->team_devname, "Read %d bytes, expected %d", err, length);
 	if (err < (length)) {
 		/* the entire message is not available yet - leave everything */
@@ -383,6 +397,9 @@ int tcnd_socket_read_cb(struct teamd_context *ctx, int events, void *priv) {
 	/* both header and message are ok and available - consume */
 	err = teamd_recvfrom(ab->tcnd_sockfd, header, 4, MSG_DONTWAIT,
 		(struct sockaddr*)&un_from,	sizeof(struct sockaddr_un));
+	if (err <= 0) {
+		teamd_ttdp_log_infox(ctx->team_devname, "tcnd_socket_read_cb 6: Error %d from recvfrom", err);
+	}
 
 	teamd_ttdp_log_dbg(ctx->team_devname, "Read header OK");
 
@@ -390,7 +407,9 @@ int tcnd_socket_read_cb(struct teamd_context *ctx, int events, void *priv) {
 		(struct sockaddr*)&un_from,	sizeof(struct sockaddr_un));
 
 	teamd_ttdp_log_dbg(ctx->team_devname, "Read message OK");
-
+	if (err <= 0) {
+		teamd_ttdp_log_infox(ctx->team_devname, "tcnd_socket_read_cb 7: Error %d from recvfrom", err);
+	}
 
 	/* handle message */
 	err = handle_message(type, buf, length, ctx, priv);
@@ -443,7 +462,7 @@ int send_tcnd_update_message(struct teamd_context *ctx, void* priv) {
 		teamd_ttdp_log_infox(ctx->team_devname, "Sent update message to TCNd: %d", err);
 	} else {
 		/* try to reconnect */
-		teamd_ttdp_log_infox(ctx->team_devname, "TCNd socket not open, will try to reconnect");
+		teamd_ttdp_log_infox(ctx->team_devname, "TCNd socket not open, will try to reconnect %s ", __FUNCTION__);
 		socket_open(ctx, priv);
 		teamd_workq_schedule_work(ctx, &ab->tcnd_notify_tcnd_workq);
 	}
@@ -503,7 +522,7 @@ int send_tcnd_line_status_update_message(struct teamd_context *ctx, void* priv) 
 		 " line %d status %02x", err, message[4], message[5]);
 		return err;
 	} else {
-		teamd_ttdp_log_infox(ctx->team_devname, "TCNd socket not open, will try to reconnect");
+		teamd_ttdp_log_infox(ctx->team_devname, "TCNd socket not open, will try to reconnect %s ", __FUNCTION__);
 		socket_open(ctx, priv);
 		/* FIXME */
 		int err = write(ab->tcnd_sockfd, message, sizeof(message));
@@ -524,7 +543,7 @@ int send_tcnd_role_message(struct teamd_context *ctx, struct ab *ab) {
 		 " direction %d status %d", err, message[4], message[5]);
 		return err;
 	} else {
-		teamd_ttdp_log_infox(ctx->team_devname, "TCNd socket not open, will try to reconnect");
+		teamd_ttdp_log_infox(ctx->team_devname, "TCNd socket not open, will try to reconnect %s ", __FUNCTION__);
 		socket_open(ctx, ab);
 		/* FIXME */
 		int err = write(ab->tcnd_sockfd, message, sizeof(message));
@@ -546,7 +565,7 @@ int send_tcnd_shorten_lengthen_message(struct teamd_context *ctx, struct ab *ab)
 		 " direction %d status %d", err, message[4], message[5]);
 		return err;
 	} else {
-		teamd_ttdp_log_infox(ctx->team_devname, "TCNd socket not open, will try to reconnect");
+		teamd_ttdp_log_infox(ctx->team_devname, "TCNd socket not open, will try to reconnect %s ", __FUNCTION__);
 		socket_open(ctx, ab);
 		/* FIXME */
 		int err = write(ab->tcnd_sockfd, message, sizeof(message));
@@ -568,7 +587,7 @@ int send_tcnd_crossed_lines_message(struct teamd_context *ctx, struct ab *ab) {
 		 " direction %d code %d data %d %d", err, message[4], message[5], message[6], message[7]);
 		return err;
 	} else {
-		teamd_ttdp_log_infox(ctx->team_devname, "TCNd socket not open, will try to reconnect");
+		teamd_ttdp_log_infox(ctx->team_devname, "TCNd socket not open, will try to reconnect %s ", __FUNCTION__);
 		socket_open(ctx, ab);
 		/* FIXME */
 		int err = write(ab->tcnd_sockfd, message, sizeof(message));
@@ -590,7 +609,7 @@ int send_tcnd_mixed_consist_orientation_message(struct teamd_context *ctx, struc
 		 " direction %d code %d data %d %d", err, message[4], message[5], message[6], message[7]);
 		return err;
 	} else {
-		teamd_ttdp_log_infox(ctx->team_devname, "TCNd socket not open, will try to reconnect");
+		teamd_ttdp_log_infox(ctx->team_devname, "TCNd socket not open, will try to reconnect %s ", __FUNCTION__);
 		socket_open(ctx, ab);
 		/* FIXME */
 		int err = write(ab->tcnd_sockfd, message, sizeof(message));
@@ -609,7 +628,7 @@ int send_tcnd_remote_inhibit_message(struct teamd_context *ctx, struct ab *ab) {
 		 " remote_inhibit %d", err, message[4]);
 		return err;
 	} else {
-		teamd_ttdp_log_infox(ctx->team_devname, "TCNd socket not open, will try to reconnect");
+		teamd_ttdp_log_infox(ctx->team_devname, "TCNd socket not open, will try to reconnect %s ", __FUNCTION__);
 		socket_open(ctx, ab);
 		/* FIXME */
 		int err = write(ab->tcnd_sockfd, message, sizeof(message));
