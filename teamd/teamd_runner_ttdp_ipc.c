@@ -76,7 +76,13 @@ int socket_open(struct teamd_context *ctx, void *priv) {
 	char errorbuf[256] = {0};
 	char* errorstr;
 
-	if (ab->tcnd_sockfd == 0) {
+	strcpy(ab->tcnd_sock_filename, "/tmp/tcnd.sock");
+
+	if (ab->tcnd_sockfd != 0) {
+		teamd_ttdp_log_infox(ctx->team_devname, "Closing socket first.");
+		socket_close(ctx, priv);
+	} else {
+		teamd_ttdp_log_infox(ctx->team_devname, "Opening TCNd IPC socket to \"%s\"", ab->tcnd_sock_filename);
 		sockfd = socket(AF_UNIX, SOCK_STREAM /* SOCK_SEQPACKET*/, 0);
 		if (sockfd <= 0) {
 			/* using GNU strerror_r */
@@ -154,11 +160,6 @@ int socket_open(struct teamd_context *ctx, void *priv) {
 				return 1;
 			}
 		}
-
-	} else {
-		teamd_ttdp_log_dbg(ctx->team_devname, "Closing socket first.");
-		socket_close(ctx, priv);
-		return 1;
 	}
 
 	if (initial_data_sent == 0) {
@@ -173,7 +174,7 @@ int socket_close(struct teamd_context *ctx, void* priv) {
 	teamd_ttdp_log_dbg(ctx->team_devname, "socket_close");
 	struct ab *ab = priv;
 	int err;
-	if (ab->tcnd_sockfd > 0) {
+	if (ab->tcnd_sockfd != 0) {
 		teamd_loop_callback_del(ctx, TTDP_IPC_SOCKET_CB_NAME, priv);
 		err = close(ab->tcnd_sockfd);
 		/* unlink(ab->tcnd_sock_filename); */
