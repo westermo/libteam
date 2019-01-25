@@ -86,7 +86,7 @@ static const char* ttdp_runner_periodic_neighbor_macs_name =
 	"ttdp_runner_periodic_neighbor_macs";
 static struct timespec ttdp_runner_periodic_neighbor_macs_timer = {
 	.tv_sec = 0,
-	.tv_nsec = 100000000 /* 200 ms */
+	.tv_nsec = 1000000000 /* 1 s */
 };
 
 static const char* port_state_strings[] = {"ERROR", "FALSE", " TRUE", "UNDEF"};
@@ -2258,7 +2258,7 @@ static int ab_init(struct teamd_context *ctx, void *priv)
 		&ttdp_runner_periodic_neighbor_macs_timer,
 		&ttdp_runner_periodic_neighbor_macs_timer
 		);
-	teamd_loop_callback_enable(ctx, ttdp_runner_periodic_neighbor_macs_name, ab);
+	// teamd_loop_callback_enable(ctx, ttdp_runner_periodic_neighbor_macs_name, ab);
 
 	return 0;
 
