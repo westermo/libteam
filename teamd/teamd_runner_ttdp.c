@@ -2154,7 +2154,18 @@ void* remote_inhibition_update(void* c, void* a) {
 static int on_initial_timer(struct teamd_context *ctx, int events, void *priv) {
 	/* run once */
 	teamd_loop_callback_disable(ctx, ttdp_runner_oneshot_initial_agg_state_name, priv);
-	send_tcnd_role_message(ctx, priv);
+	struct ab* ab = (struct ab*)priv;
+	int err;
+	if (ab->silent != TTDP_SILENT_NO_OUTPUT_INPUT) {
+		if (socket_open(ctx, ab) == 0) {
+			err = send_tcnd_identity_message(ctx, ab);
+			teamd_ttdp_log_infox(ctx->team_devname, "Sent identity to TCNd: %d", err);
+			err = send_tcnd_snmp_gen_info(ctx, ab);
+			teamd_ttdp_log_infox(ctx->team_devname, "Sent SNMP gen info to TCNd: %d", err);
+			err = send_tcnd_role_message(ctx, priv);
+			teamd_ttdp_log_infox(ctx->team_devname, "Sent role info to TCNd: %d", err);
+		}
+	}
 	return 0;
 }
 
@@ -2232,15 +2243,6 @@ static int ab_init(struct teamd_context *ctx, void *priv)
 
 	ab->line_state_update_func = line_status_update;
 	ab->line_timeout_value_update_func = line_timeout_update;
-
-	if (ab->silent != TTDP_SILENT_NO_OUTPUT_INPUT) {
-		if (socket_open(ctx, ab) == 0) {
-			err = send_tcnd_identity_message(ctx, ab);
-			teamd_ttdp_log_infox(ctx->team_devname, "Sent identity to TCNd: %d", err);
-			err = send_tcnd_snmp_gen_info(ctx, ab);
-			teamd_ttdp_log_infox(ctx->team_devname, "Sent SNMP gen info to TCNd: %d", err);
-		}
-	}
 
 	teamd_loop_callback_timer_add_set(ctx,
 		ttdp_runner_oneshot_initial_agg_state_name,
