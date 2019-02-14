@@ -932,6 +932,12 @@ static int lw_ttdp_sock_open(struct lw_ttdp_port_priv* ttdp_ppriv) {
 		.mr_address = {0}
 	};
 	err = setsockopt(ttdp_ppriv->start.psr.sock, SOL_PACKET, PACKET_ADD_MEMBERSHIP, &mreq, sizeof(mreq));
+	
+	int priority = 7;
+	if (setsockopt(ttdp_ppriv->start.psr.sock, SOL_SOCKET, SO_PRIORITY, &priority, sizeof(priority)) != 0) {
+		syslog(LOG_ERR, "Error setting priority 7 for socket %d. Continuing anyway.",
+		ttdp_ppriv->start.common.tdport->ifindex);
+	}
 
 	teamd_ttdp_log_dbgx(ttdp_ppriv, "packet sock open: %d flen %d\n", err, ttdp_hello_fprog.len);
 	return err;
