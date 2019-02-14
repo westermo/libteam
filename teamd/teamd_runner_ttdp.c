@@ -1776,7 +1776,7 @@ static int ttdp_etb_topocount_str_get(struct teamd_context *ctx,
 				    void *priv) {
 	struct ab *ab = priv;
 	memset(ab->etb_topo_counter_str, 0, sizeof(ab->etb_topo_counter_str));
-	snprintf((char*)(ab->etb_topo_counter_str), sizeof(ab->etb_topo_counter_str)-1, "%#8X", ab->etb_topo_counter);
+	snprintf((char*)(ab->etb_topo_counter_str), sizeof(ab->etb_topo_counter_str)-1, "%#8X", htonl(ab->etb_topo_counter));
 	gsc->data.str_val.ptr = (char*)(ab->etb_topo_counter_str);
 	return 0;
 }
