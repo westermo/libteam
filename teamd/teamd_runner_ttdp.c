@@ -2152,18 +2152,38 @@ void* remote_inhibition_update(void* c, void* a) {
 }
 
 static int on_initial_timer(struct teamd_context *ctx, int events, void *priv) {
-	/* run once */
+	/* run until success, max. this many times */
+	static int tries = IPC_TRIES_MAX;
 	teamd_loop_callback_disable(ctx, ttdp_runner_oneshot_initial_agg_state_name, priv);
 	struct ab* ab = (struct ab*)priv;
-	int err;
+	int err = 0, err2 = 0;
 	if (ab->silent != TTDP_SILENT_NO_OUTPUT_INPUT) {
+		/* Don't worry about close(), it's done in socket_open() for us */
 		if (socket_open(ctx, ab) == 0) {
 			err = send_tcnd_identity_message(ctx, ab);
 			teamd_ttdp_log_infox(ctx->team_devname, "Sent identity to TCNd: %d", err);
+			if (err < 0)
+				err2 += err;
+
 			err = send_tcnd_snmp_gen_info(ctx, ab);
 			teamd_ttdp_log_infox(ctx->team_devname, "Sent SNMP gen info to TCNd: %d", err);
+			if (err < 0)
+				err2 += err;
+
 			err = send_tcnd_role_message(ctx, priv);
 			teamd_ttdp_log_infox(ctx->team_devname, "Sent role info to TCNd: %d", err);
+			if (err < 0)
+				err2 += err;
+		} else {
+			err2 = -1;
+		}
+
+		if (err2 < 0) {
+			if (tries-- <= 0) {
+				teamd_log_err("Could not connect to IPC socket after %d attempts - giving up.", IPC_TRIES_MAX);
+			} else {
+				teamd_loop_callback_enable(ctx, ttdp_runner_oneshot_initial_agg_state_name, priv);
+			}
 		}
 	}
 	return 0;
@@ -2231,6 +2251,7 @@ static int ab_init(struct teamd_context *ctx, void *priv)
 
 	memset(ab->port_statuses, 3, 4);
 	strcpy(ab->tcnd_sock_filename, "/tmp/tcnd.sock");
+	ab->tcnd_sockfd = 0;
 	ab->etb_topo_counter = 0xFFFFFFFF;
 	ab->inhibition_flag_local = 0;
 	ab->inhibition_flag_any = 0;

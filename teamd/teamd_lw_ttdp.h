@@ -33,6 +33,9 @@
 #define TTDP_SILENT_NO_OUTPUT_INPUT 2
 #define TTDP_NOT_SILENT 0
 
+/* how many times to try sending the inital IPC data */
+#define IPC_TRIES_MAX 5
+
 #define TTDP_TOPOCNT_STR_BUF_SIZE 12
 
 /* used for aggregate_status in struct ab */
