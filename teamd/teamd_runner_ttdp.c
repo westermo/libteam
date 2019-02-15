@@ -328,8 +328,8 @@ static void move_to_aggregate_state(struct teamd_context *ctx,
 	if (change) {
 		ab->aggregate_status = next;
 		ab_link_watch_handler(ctx, ab);
-		send_tcnd_role_message(ctx, ab);
 	}
+	send_tcnd_role_message(ctx, ab);
 }
 
 uint8_t update_aggregate_state(struct teamd_context *ctx,
@@ -2170,10 +2170,10 @@ static int on_initial_timer(struct teamd_context *ctx, int events, void *priv) {
 			if (err < 0)
 				err2 += err;
 
-			err = send_tcnd_role_message(ctx, priv);
-			teamd_ttdp_log_infox(ctx->team_devname, "Sent role info to TCNd: %d", err);
-			if (err < 0)
-				err2 += err;
+			// err = send_tcnd_role_message(ctx, priv);
+			// teamd_ttdp_log_infox(ctx->team_devname, "Sent role info to TCNd: %d", err);
+			// if (err < 0)
+			// 	err2 += err;
 
 			err = send_tcnd_line_status_update_message(ctx, priv);
 			teamd_ttdp_log_infox(ctx->team_devname, "Sent line status to TCNd: %d", err);
