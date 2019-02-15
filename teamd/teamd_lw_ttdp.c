@@ -1847,6 +1847,7 @@ static int lw_ttdp_port_added(struct teamd_context *ctx,
 	}
 
 	ttdp_ppriv->local_phy_link_up = team_is_port_link_up(tdport->team_port);
+	force_parent_port_status(ctx, ttdp_ppriv, 1);
 	return err;
 }
 

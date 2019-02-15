@@ -494,6 +494,14 @@ void prepare_tcnd_update_message(struct teamd_context *ctx, struct ab *ab) {
 
 int send_tcnd_line_status_update_message(struct teamd_context *ctx, void* priv) {
 	struct ab *ab = priv;
+	/* To make sure we don't end uninitialized data, make sure we send
+	 * "UNDEFINED" (3) instead of "ERROR" (0). */
+	for (int i = 0; i < 4; ++i) {
+		if (((ab->port_statuses_b & (0x3 << (2*i))) >> (2*i)) == 0) {
+			ab->port_statuses_b |= (0x3 << (2*i));
+		}
+	}
+
 	/* header + 2 */
 	uint8_t message[4+7] = {0x10, 0, 0, 0x07, 0, 0};
 	message[4] = ab->direction - 1;

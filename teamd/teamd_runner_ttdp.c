@@ -2174,6 +2174,11 @@ static int on_initial_timer(struct teamd_context *ctx, int events, void *priv) {
 			teamd_ttdp_log_infox(ctx->team_devname, "Sent role info to TCNd: %d", err);
 			if (err < 0)
 				err2 += err;
+
+			err = send_tcnd_line_status_update_message(ctx, priv);
+			teamd_ttdp_log_infox(ctx->team_devname, "Sent line status to TCNd: %d", err);
+			if (err < 0)
+				err2 += err;
 		} else {
 			err2 = -1;
 		}
@@ -2253,6 +2258,7 @@ static int ab_init(struct teamd_context *ctx, void *priv)
 	strcpy(ab->tcnd_sock_filename, "/tmp/tcnd.sock");
 	ab->tcnd_sockfd = 0;
 	ab->etb_topo_counter = 0xFFFFFFFF;
+	ab->port_statuses_b = 0xFF;
 	ab->inhibition_flag_local = 0;
 	ab->inhibition_flag_any = 0;
 	ab->inhibition_flag_neighbor = 0;
