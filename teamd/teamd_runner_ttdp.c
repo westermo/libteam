@@ -2156,6 +2156,7 @@ static int on_initial_timer(struct teamd_context *ctx, int events, void *priv) {
 	static int tries = IPC_TRIES_MAX;
 	teamd_loop_callback_disable(ctx, ttdp_runner_oneshot_initial_agg_state_name, priv);
 	struct ab* ab = (struct ab*)priv;
+	line_status_update(ctx, ab);
 	int err = 0, err2 = 0;
 	if (ab->silent != TTDP_SILENT_NO_OUTPUT_INPUT) {
 		/* Don't worry about close(), it's done in socket_open() for us */
