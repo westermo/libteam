@@ -63,7 +63,7 @@
 #endif
 #define teamd_ttdp_log_info(format, args...) daemon_log(LOG_INFO, format, ## args)
 #define teamd_ttdp_log_dbg(format, args...) daemon_log(LOG_DEBUG, format, ## args)
-
+#define teamd_ttdp_log_warnx(P, format, args...) daemon_log(LOG_WARNING, "%s: " format, TEAMNAME_OR_EMPTY(P), ## args)
 
 
 /* synchronize with teamd_lw_ttdp.h */
@@ -1787,7 +1787,7 @@ static int ttdp_inaugurated_set(struct teamd_context *ctx,
 	ab->inaugurated = gsc->data.bool_val;
 	uint8_t prev = ab->aggregate_status;
 	uint8_t next = update_aggregate_state(ctx, ab);
-	teamd_ttdp_log_dbgx(ctx->team_devname, "Now considering myself %sinaugurated, state change"
+	teamd_ttdp_log_infox(ctx->team_devname, "Now considering myself %sinaugurated, state change"
 		" %d->%d", (gsc->data.bool_val ? "" : "not "), prev, next);
 	return 0;
 }
@@ -2289,6 +2289,8 @@ static int ab_init(struct teamd_context *ctx, void *priv)
 		&ttdp_runner_periodic_neighbor_macs_timer
 		);
 	// teamd_loop_callback_enable(ctx, ttdp_runner_periodic_neighbor_macs_name, ab);
+
+	teamd_ttdp_log_infox(ctx->team_devname, "Started.");
 
 	return 0;
 
