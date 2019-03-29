@@ -348,6 +348,11 @@ uint8_t update_aggregate_state(struct teamd_context *ctx,
 		current, inaugurated, inhibit, end, is_neighbor_none(&ab->fixed_elected_neighbor),
 		is_neighbor_none(&ab->elected_neighbor));
 
+	if (inhibit && !inaugurated) {
+		teamd_ttdp_log_warnx(ctx->team_devname, "state change while inhibited but not inaugurated; ignoring");
+		return current;
+	}
+
 	switch (current) {
 		case TTDP_AGG_STATE_FLOATING_END:
 			if (inhibit && inaugurated) {
@@ -2261,7 +2266,7 @@ static int ab_init(struct teamd_context *ctx, void *priv)
 	ab->etb_topo_counter = 0xFFFFFFFF;
 	ab->port_statuses_b = 0xFF;
 	ab->inhibition_flag_local = 0;
-	ab->inhibition_flag_any = 0;
+	ab->inhibition_flag_any = 2;
 	ab->inhibition_flag_neighbor = 0;
 	ab->inhibition_flag_remote_consist = 0;
 	ab->aggregate_status = TTDP_AGG_STATE_DEFAULT;
