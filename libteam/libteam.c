@@ -54,6 +54,7 @@
 #include <linux/if_team.h>
 #include <linux/types.h>
 #include <linux/filter.h>
+#include <linux/genetlink.h>
 #include <team.h>
 #include <private/list.h>
 #include <private/misc.h>
