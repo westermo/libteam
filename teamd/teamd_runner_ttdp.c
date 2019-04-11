@@ -168,11 +168,11 @@ teamd_ttdp_log_infox(ctx->team_devname, "Move to FORWARDING");
 	}
 		#ifdef SET_USER_LINK_TEAM_IFACE
 			team_set_port_user_linkup(ctx->th, ctx->ifindex, true);
-			fprintf(stderr, "FORWARDING set user_link %d\n", ctx->ifindex);
+			// fprintf(stderr, "FORWARDING set user_link %d\n", ctx->ifindex);
 		#endif
 		#ifdef SET_LINK_TEAM_IFACE
 			team_link_set(ctx->th, ctx->ifindex, true);
-			fprintf(stderr, "FORWARDING set link %d\n", ctx->ifindex);
+			// fprintf(stderr, "FORWARDING set link %d\n", ctx->ifindex);
 		#endif
 
 	ab_link_watch_handler_internal(ctx, ab, false);
