@@ -13,8 +13,8 @@
 #include <stddef.h> /* Needed by libnsh*/
 #include <jansson.h>
 
-#include "../../../../libnsh/libnsh-0.1/table.h"
-#include "../../../../libnsh/libnsh-0.1/scalar.h"
+#include <libnsh/table.h>
+#include <libnsh/scalar.h>
 
 #define oid_iso					1						/* 1 */
 #define oid_member_body			oid_iso, 2				/* 1.2 */
