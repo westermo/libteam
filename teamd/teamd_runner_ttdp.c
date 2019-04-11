@@ -192,11 +192,11 @@ static void all_ports_discarding(struct teamd_context *ctx, struct ab* ab) {
 	}
 	#ifdef SET_USER_LINK_TEAM_IFACE
 		team_set_port_user_linkup(ctx->th, ctx->ifindex, false);
-		fprintf(stderr, "DISCARDING set %d\n", ctx->ifindex);
+		// fprintf(stderr, "DISCARDING set %d\n", ctx->ifindex);
 	#endif
 	#ifdef SET_LINK_TEAM_IFACE
 		team_link_set(ctx->th, ctx->ifindex, false);
-		fprintf(stderr, "DISCARDING set link %d\n", ctx->ifindex);
+		// fprintf(stderr, "DISCARDING set link %d\n", ctx->ifindex);
 	#endif
 	//ab_link_watch_handler(ctx, ab);
 }
