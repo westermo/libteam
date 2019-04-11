@@ -1449,6 +1449,11 @@ static void teamd_fini(struct teamd_context *ctx)
 	team_free(ctx->th);
 }
 
+static void exiting(void) {
+	teamd_log_info("Exiting, clearing PID file\n");
+	daemon_pid_file_remove();
+}
+
 static int teamd_start(struct teamd_context *ctx, enum teamd_exit_code *p_ret)
 {
 	pid_t pid;
@@ -1512,6 +1517,8 @@ static int teamd_start(struct teamd_context *ctx, enum teamd_exit_code *p_ret)
 		daemon_retval_send(errno);
 		return -errno;
 	}
+
+	atexit(exiting);
 
 	if (daemon_signal_init(SIGINT, SIGTERM, SIGQUIT, SIGHUP, 0) < 0) {
 		teamd_log_err("Could not register signal handlers.");
