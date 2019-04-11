@@ -50,6 +50,10 @@
 
 /* Define to set user link up/down when ports don't agree with the elected neighbor */
 // #define SET_USER_LINK
+/* Define to set user link up/down on all ports when in FORWARDING/DISCARDING */
+// #define SET_USER_LINK_TEAM_IFACE
+/* Define to set link up/down on the agg iface when in FORWARDING/DISCARDING */
+#define SET_LINK_TEAM_IFACE
 
 #define TEAMNAME_OR_EMPTY(P) ((P)\
 	? P : "ttdp-runner")
@@ -162,6 +166,15 @@ teamd_ttdp_log_infox(ctx->team_devname, "Move to FORWARDING");
 		//team_set_port_user_linkup(ctx->th, ifindex, true);
 		//teamd_ttdp_log_dbgx(ctx->team_devname, "set %d FORWARDING: %d", ifindex, err);
 	}
+		#ifdef SET_USER_LINK_TEAM_IFACE
+			team_set_port_user_linkup(ctx->th, ctx->ifindex, true);
+			fprintf(stderr, "FORWARDING set user_link %d\n", ctx->ifindex);
+		#endif
+		#ifdef SET_LINK_TEAM_IFACE
+			team_link_set(ctx->th, ctx->ifindex, true);
+			fprintf(stderr, "FORWARDING set link %d\n", ctx->ifindex);
+		#endif
+
 	ab_link_watch_handler_internal(ctx, ab, false);
 }
 
@@ -177,6 +190,14 @@ static void all_ports_discarding(struct teamd_context *ctx, struct ab* ab) {
 		//team_set_port_user_linkup(ctx->th, ifindex, false);
 		//teamd_ttdp_log_dbgx(ctx->team_devname, "set %d BLOCKING: %d", ifindex, err);
 	}
+	#ifdef SET_USER_LINK_TEAM_IFACE
+		team_set_port_user_linkup(ctx->th, ctx->ifindex, false);
+		fprintf(stderr, "DISCARDING set %d\n", ctx->ifindex);
+	#endif
+	#ifdef SET_LINK_TEAM_IFACE
+		team_link_set(ctx->th, ctx->ifindex, false);
+		fprintf(stderr, "DISCARDING set link %d\n", ctx->ifindex);
+	#endif
 	//ab_link_watch_handler(ctx, ab);
 }
 
@@ -1193,6 +1214,11 @@ static int ab_port_added(struct teamd_context *ctx,
 	}
 #endif
 
+#ifdef SET_USER_LINK_TEAM_IFACE
+	team_set_port_user_linkup_enabled(ctx->th, tdport->ifindex, true);
+	team_set_port_user_linkup(ctx->th, tdport->ifindex, false);
+#endif
+
 	if (ab->hwaddr_policy->port_added)
 		return ab->hwaddr_policy->port_added(ctx, ab, tdport);
 	return 0;
@@ -1217,6 +1243,11 @@ static int ab_event_watch_port_added(struct teamd_context *ctx,
 				     struct teamd_port *tdport, void *priv)
 {
 	struct ab *ab = priv;
+
+#ifdef SET_USER_LINK_TEAM_IFACE
+	team_set_port_user_linkup_enabled(ctx->th, tdport->ifindex, true);
+	team_set_port_user_linkup(ctx->th, tdport->ifindex, true);
+#endif
 
 	return teamd_port_priv_create(tdport, &ab_port_priv, ab);
 }
@@ -2294,6 +2325,11 @@ static int ab_init(struct teamd_context *ctx, void *priv)
 		&ttdp_runner_periodic_neighbor_macs_timer
 		);
 	// teamd_loop_callback_enable(ctx, ttdp_runner_periodic_neighbor_macs_name, ab);
+
+#ifdef SET_USER_LINK_TEAM_IFACE
+	// team_set_port_user_linkup_enabled(ctx->th, ctx->ifindex, true);
+	// team_set_port_user_linkup(ctx->th, ctx->ifindex, true);
+#endif
 
 	teamd_ttdp_log_infox(ctx->team_devname, "Started.");
 
