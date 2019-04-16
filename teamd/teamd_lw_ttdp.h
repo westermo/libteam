@@ -256,6 +256,7 @@ struct ab {
 	uint32_t active_ifindex;
 	char active_orig_hwaddr[MAX_ADDR_LEN];
 	const struct ab_hwaddr_policy *hwaddr_policy;
+	int hwaddr_policy_first_set;
 	struct teamd_workq link_watch_handler_workq;
 	struct teamd_workq tcnd_notify_tcnd_workq;
 	struct teamd_workq link_state_update_workq;

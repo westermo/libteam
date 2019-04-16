@@ -491,9 +491,10 @@ static int ab_hwaddr_policy_first_port_added(struct teamd_context *ctx,
 						struct ab *ab,
 						struct teamd_port *tdport) {
 	int err;
-	teamd_ttdp_log_dbgx(ctx->team_devname, "ab_hwaddr_policy_first_port_added: %d ports",
-		ctx->port_obj_list_count);
-	if (ctx->port_obj_list_count == 1) {
+	teamd_ttdp_log_dbgx(ctx->team_devname, "ab_hwaddr_policy_first_port_added: %d ports, run: %d",
+		ctx->port_obj_list_count, ab->hwaddr_policy_first_set);
+	// if (ctx->port_obj_list_count == 1) {
+	if (ab->hwaddr_policy_first_set++ == 0) {
 		/* first! */
 		err = team_hwaddr_set(ctx->th, ctx->ifindex, team_get_ifinfo_hwaddr(tdport->team_ifinfo),
 			ctx->hwaddr_len);
@@ -518,6 +519,15 @@ static const struct ab_hwaddr_policy ab_hwaddr_policy_first = {
 static const struct ab_hwaddr_policy ab_hwaddr_policy_fixed = {
 	.name = "fixed",
 };
+
+
+static int ttdp_hwaddr_policy_first_set_get(struct teamd_context *ctx,
+				    struct team_state_gsc *gsc,
+				    void *priv) {
+	struct ab* ab = priv;
+	gsc->data.int_val = ab->hwaddr_policy_first_set;
+	return 0;
+}
 
 static int ab_hwaddr_policy_same_all_hwaddr_changed(struct teamd_context *ctx,
 						    struct ab *ab)
@@ -2151,6 +2161,11 @@ static const struct teamd_state_val ab_state_vals[] = {
 		.type = TEAMD_STATE_ITEM_TYPE_INT,
 		.getter = ttdp_inhibition_nonlocal_get,
 		.setter = ttdp_inhibition_nonlocal_set
+	},
+	{
+		.subpath = "first_hwaddr_set",
+		.type = TEAMD_STATE_ITEM_TYPE_INT,
+		.getter = ttdp_hwaddr_policy_first_set_get
 	}
 };
 
