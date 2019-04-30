@@ -684,12 +684,23 @@ int teamd_loop_callback_disable(struct teamd_context *ctx, const char *cb_name,
 static int callback_daemon_signal(struct teamd_context *ctx, int events,
 				  void *priv)
 {
+	static int failed = 0;
 	int sig;
 
 	/* Get signal */
 	if ((sig = daemon_signal_next()) <= 0) {
-		teamd_log_err("daemon_signal_next() failed.");
-		return -EINVAL;
+		teamd_log_err("daemon_signal_next() failed = %d", sig);
+		daemon_signal_done();
+
+		if (daemon_signal_init(SIGINT, SIGTERM, SIGQUIT, SIGHUP, 0) != 0) {
+			sig = SIGINT;
+		} else if (++failed < 10) {
+			return 0;
+		} else {
+			sig = SIGINT;
+		}
+	} else {
+		failed = 0;
 	}
 
 	/* Dispatch signal */
