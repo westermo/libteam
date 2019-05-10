@@ -160,7 +160,7 @@ static int parse_jason (json_t *dump_json)
 	char *actor_system, *partner_system;
 	uint32_t actor_key = 0, actor_port = 0, actor_port_prio = 0, actor_state = 0, actor_prio = 0;
 	uint32_t partner_key = 0, partner_port = 0, partner_port_prio = 0, partner_state = 0, partner_prio = 0;
-	uint32_t selected, id;
+	uint32_t selected, id = 0;
 
 	unsigned char actor_mac[6] = { 0 }, partner_mac[6] = { 0 };
 
