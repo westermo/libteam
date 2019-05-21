@@ -38,6 +38,7 @@
 #include "teamd_workq.h"
 #include "teamd_lw_ttdp.h"
 #include "teamd_runner_ttdp_ipc.h"
+#include "teamd_lag_state_persistence.h"
 
 /* This code is based on the the activebackup runner, with IEC61375-specific
    additions and changes. The following major changes have been made:
@@ -204,20 +205,21 @@ static void all_ports_discarding(struct teamd_context *ctx, struct ab* ab) {
 static void set_shortening(struct teamd_context *ctx,
 	struct ab* ab, bool shortening) {
 	ab->shortening_detected = shortening;
-	send_tcnd_shorten_lengthen_message(ctx, ab);
+	lag_state_write_shortening_detected(ctx, ab);
 }
 
 static void set_lengthening(struct teamd_context *ctx,
 	struct ab* ab, bool lengthening) {
 	ab->lengthening_detected = lengthening;
-	send_tcnd_shorten_lengthen_message(ctx, ab);
+	lag_state_write_lengthening_detected(ctx, ab);
 }
 
 static void clear_shorten_lengthen(struct teamd_context *ctx,
 	struct ab* ab) {
 	ab->shortening_detected = false;
 	ab->lengthening_detected = false;
-	send_tcnd_shorten_lengthen_message(ctx, ab);
+	lag_state_write_shortening_detected(ctx, ab);
+	lag_state_write_lengthening_detected(ctx, ab);
 }
 
 static int detect_trivial_shortening(struct teamd_context *ctx,
@@ -350,7 +352,7 @@ static void move_to_aggregate_state(struct teamd_context *ctx,
 		ab->aggregate_status = next;
 		ab_link_watch_handler(ctx, ab);
 	}
-	send_tcnd_role_message(ctx, ab);
+	lag_state_write_aggregate_role(ctx, ab);
 }
 
 uint8_t update_aggregate_state(struct teamd_context *ctx,
@@ -947,13 +949,8 @@ static int elect_neighbor(struct teamd_context *ctx, struct ab *ab, uint8_t *nex
 				ab->neighbor_is_none = 0;
 			}
 
-			/* check if a team has reported diagnostic states */
-			if (ab->crossed_lines_detected) {
-				send_tcnd_crossed_lines_message(ctx, ab);
-			}
-			if (ab->mixed_consist_orientation_detected) {
-				send_tcnd_mixed_consist_orientation_message(ctx, ab);
-			}
+			lag_state_write_diag_crossed_lines_detected(ctx, ab);
+			lag_state_write_diag_mixed_consist_orientation_detected(ctx, ab);
 
 			/* store winner mac */
 			memcpy(ab->elected_neighbor.neighbor_mac, ab->neighbors[candidate_suggestion].neighbor_mac,
@@ -1016,10 +1013,10 @@ static int ab_link_watch_handler_internal(struct teamd_context *ctx, struct ab *
 				prepare_tcnd_update_message(ctx, ab);
 
 				//if (ab->silent == TTDP_NOT_SILENT) {
-					send_tcnd_update_message(ctx, ab);
+					lag_state_write_elected_neighbor(ctx, ab);
 				//}
 				/* FIXME */
-				teamd_ttdp_log_infox(ctx->team_devname, "Sending neighbor update message to TCNd.");
+				teamd_ttdp_log_infox(ctx->team_devname, "Wrote elected neighbor state file.");
 			}
 
 			update_aggregate_state(ctx, ab);
@@ -1062,10 +1059,8 @@ static int ab_link_watch_handler_internal(struct teamd_context *ctx, struct ab *
 		/* Notify tcnd that something has changed */
 		prepare_tcnd_update_message(ctx, ab);
 
-		send_tcnd_update_message(ctx, ab);
-
-		/* FIXME */
-		teamd_ttdp_log_infox(ctx->team_devname, "Sending neighbor update message via IPC.");
+		teamd_ttdp_log_infox(ctx->team_devname, "Writing elected neighbor to state file.");
+		lag_state_write_elected_neighbor(ctx, ab);
 	}
 
 	teamd_ttdp_log_dbgx(ctx->team_devname, "AGREE mode %d count %d %d", ab->neighbor_agreement_mode,
@@ -1146,8 +1141,8 @@ static int ab_link_watch_handler_internal(struct teamd_context *ctx, struct ab *
 	 * is called */
 	if (ab->port_statuses_b != ab->port_statuses_b_prev) {
 		ab->port_statuses_b_prev = ab->port_statuses_b;
-		teamd_ttdp_log_infox(ctx->team_devname, "Sending line status update message to TCNd.");
-		send_tcnd_line_status_update_message(ctx, ab);
+		teamd_ttdp_log_infox(ctx->team_devname, "Writing line status to state files.");
+		lag_state_write_line_status(ctx, ab);
 	}
 
 	if (!best.tdport || best.tdport == active_tdport)
@@ -1532,7 +1527,7 @@ static int link_state_update_work(struct teamd_context *ctx,
 		port_state_strings[ab->port_statuses[3]]
 		);
 
-	send_tcnd_line_status_update_message(ctx, ab);
+	lag_state_write_line_status(ctx, ab);
 
 	return 0;
 }
@@ -1546,7 +1541,7 @@ static int send_link_timeout_update_work(struct teamd_context *ctx,
 	teamd_ttdp_log_infox(ctx->team_devname, "Updated link timeouts: fast %" PRIu32 " slow %" PRIu32 "",
 		ab->latest_line_fast_timeout_ms, ab->latest_line_slow_timeout_ms);
 
-	return send_tcnd_snmp_gen_info(ctx, ab);
+	return lag_state_write_hello_timeouts(ctx, ab);
 }
 
 static int remote_inhibition_update_work(struct teamd_context *ctx,
@@ -1581,7 +1576,7 @@ static int remote_inhibition_update_work(struct teamd_context *ctx,
 		remote_inhibition_prev,
 		ab->remote_inhibition_actual);
 	if (remote_inhibition_prev != ab->remote_inhibition_actual)
-		send_tcnd_remote_inhibit_message(ctx, ab);
+		lag_state_write_remote_inhibition(ctx, ab);
 	return 0;
 }
 
@@ -1798,7 +1793,7 @@ static int ttdp_neighbor_data_req_set(struct teamd_context *ctx,
 	struct ab *ab = priv;
 	teamd_ttdp_log_infox(ctx->team_devname, "Neighbor data update requested by statevar");
 	prepare_tcnd_update_message(ctx, ab);
-	send_tcnd_update_message(ctx, ab);
+	lag_state_write_elected_neighbor(ctx, ab);
 	return 0;
 }
 static int ttdp_etb_topocount_get(struct teamd_context *ctx,
@@ -2202,6 +2197,7 @@ void* remote_inhibition_update(void* c, void* a) {
 	return NULL;
 }
 
+// TODO(Jacques): Move state file writes outside of this function; no need for timer anymore
 static int on_initial_timer(struct teamd_context *ctx, int events, void *priv) {
 	/* run until success, max. this many times */
 	static int tries = IPC_TRIES_MAX;
@@ -2210,34 +2206,29 @@ static int on_initial_timer(struct teamd_context *ctx, int events, void *priv) {
 	line_status_update(ctx, ab);
 	int err = 0, err2 = 0;
 	if (ab->silent != TTDP_SILENT_NO_OUTPUT_INPUT) {
-		/* Don't worry about close(), it's done in socket_open() for us */
-		if (socket_open(ctx, ab) == 0) {
-			err = send_tcnd_identity_message(ctx, ab);
-			teamd_ttdp_log_infox(ctx->team_devname, "Sent identity to TCNd: %d", err);
-			if (err < 0)
-				err2 += err;
+		err = lag_state_write_identity(ctx, ab);
+		if (err < 0)
+			err2 += err;
+		teamd_ttdp_log_infox(ctx->team_devname, "Wrote identity state file: %d", err);
 
-			err = send_tcnd_snmp_gen_info(ctx, ab);
-			teamd_ttdp_log_infox(ctx->team_devname, "Sent SNMP gen info to TCNd: %d", err);
-			if (err < 0)
-				err2 += err;
+		err = lag_state_write_hello_timeouts(ctx, ab);
+		teamd_ttdp_log_infox(ctx->team_devname, "Wrote TTDP HELLO timeouts to state file: %d", err);
+		if (err < 0)
+			err2 += err;
 
-			// err = send_tcnd_role_message(ctx, priv);
-			// teamd_ttdp_log_infox(ctx->team_devname, "Sent role info to TCNd: %d", err);
-			// if (err < 0)
-			// 	err2 += err;
+		// err = send_tcnd_role_message(ctx, priv);
+		// teamd_ttdp_log_infox(ctx->team_devname, "Sent role info to TCNd: %d", err);
+		// if (err < 0)
+		// 	err2 += err;
 
-			err = send_tcnd_line_status_update_message(ctx, priv);
-			teamd_ttdp_log_infox(ctx->team_devname, "Sent line status to TCNd: %d", err);
-			if (err < 0)
-				err2 += err;
-		} else {
-			err2 = -1;
-		}
+		err = lag_state_write_line_status(ctx, priv);
+		teamd_ttdp_log_infox(ctx->team_devname, "Wrote line status to state file: %d", err);
+		if (err < 0)
+			err2 += err;
 
 		if (err2 < 0) {
 			if (tries-- <= 0) {
-				teamd_log_err("Could not connect to IPC socket after %d attempts - giving up.", IPC_TRIES_MAX);
+				teamd_log_err("Could not write to state files after %d attempts - giving up.", IPC_TRIES_MAX);
 			} else {
 				teamd_loop_callback_enable(ctx, ttdp_runner_oneshot_initial_agg_state_name, priv);
 			}
@@ -2361,8 +2352,6 @@ static void ab_fini(struct teamd_context *ctx, void *priv)
 
 	teamd_state_val_unregister(ctx, &ab_state_vg, ab);
 	teamd_event_watch_unregister(ctx, &ab_event_watch_ops, ab);
-
-	socket_close(ctx, ab);
 }
 
 const struct teamd_runner teamd_runner_ttdp = {

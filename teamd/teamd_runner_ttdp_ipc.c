@@ -35,6 +35,7 @@
 #include "teamd_workq.h"
 #include "teamd_lw_ttdp.h"
 #include "teamd_runner_ttdp_ipc.h"
+#include "teamd_lag_state_persistence.h"
 
 #define MAX_RECV_BUF_SIZE 128*1024
 #define TTDP_IPC_SOCKET_CB_NAME "ttdp_ipc_socket"
@@ -476,7 +477,7 @@ int send_tcnd_update_message_work(struct teamd_context *ctx,
 
 	struct ab *ab;
 	ab = get_container(workq, struct ab, link_watch_handler_workq);
-	return send_tcnd_update_message(ctx, ab);
+	return lag_state_write_elected_neighbor(ctx, ab);
 }
 
 void prepare_tcnd_update_message(struct teamd_context *ctx, struct ab *ab) {

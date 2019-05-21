@@ -20,7 +20,8 @@ teamd_SOURCES=teamd.c teamd_common.c teamd_json.c teamd_config.c teamd_state.c \
 	      teamd_bpf_chef.c teamd_hash_func.c teamd_balancer.c \
 	      teamd_runner_basic_ones.c teamd_runner_activebackup.c \
 	      teamd_runner_loadbalance.c teamd_runner_lacp.c \
-	      teamd_runner_ttdp.c teamd_lw_ttdp.c ttdp_checksum.c teamd_runner_ttdp_ipc.c
+	      teamd_runner_ttdp.c teamd_lw_ttdp.c ttdp_checksum.c teamd_runner_ttdp_ipc.c \
+	      teamd_lag_state_persistence.c
 
 EXTRA_DIST = example_configs dbus redhat teamd.conf.in
 
