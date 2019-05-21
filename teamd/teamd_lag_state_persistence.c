@@ -42,7 +42,7 @@
 					 "-" \
 					 "%.2" PRIx8 "%.2" PRIx8  \
 					 "-" \
-					 "%.2" PRIx8 "%.2" PRIx8 "%.2" PRIx8 "%.2" PRIx8 "%.2" PRIx8 "%.2" PRIx8 
+					 "%.2" PRIx8 "%.2" PRIx8 "%.2" PRIx8 "%.2" PRIx8 "%.2" PRIx8 "%.2" PRIx8
 
 #define TEAMD_STATE_PATH "/run/train/lag"
 
@@ -65,17 +65,17 @@ static int mkpathdir(char *file_path, mode_t mode)
 
 FILE *open_lag_state_file(const char *team_devname, const char *path, const char *mode) {
 	char pathname[PATH_MAX] = {'\0'};
-	
+
 	int written = snprintf(pathname, sizeof(pathname), TEAMD_STATE_PATH "/%s/%s", team_devname, path);
 	if (written >= sizeof(pathname)) {
 		return NULL;
 	}
-	
+
 	int err = mkpathdir(pathname, S_IRWXU | (S_IRGRP | S_IXGRP) | (S_IROTH | S_IXOTH));
 	if (err < 0) {
 		return NULL;
 	}
-	
+
 	return fopen(pathname, mode);
 }
 
