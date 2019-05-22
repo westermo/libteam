@@ -2197,7 +2197,6 @@ void* remote_inhibition_update(void* c, void* a) {
 	return NULL;
 }
 
-// TODO(Jacques): Move state file writes outside of this function; no need for timer anymore
 static int on_initial_timer(struct teamd_context *ctx, int events, void *priv) {
 	/* run until success, max. this many times */
 	static int tries = IPC_TRIES_MAX;
