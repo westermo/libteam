@@ -85,6 +85,11 @@
 #define TTDP_LOGIC_TRUE 2
 #define TTDP_LOGIC_UNDEFINED 3
 
+#define TTDP_PORT_STATE_DISABLED 0
+#define TTDP_PORT_STATE_ERROR 1
+#define TTDP_PORT_STATE_FORWARDING 2
+#define TTDP_PORT_STATE_DISCARDING 3
+
 /* private data for a single ttdp port/linkwatcher */
 struct lw_ttdp_port_priv {
 	union {

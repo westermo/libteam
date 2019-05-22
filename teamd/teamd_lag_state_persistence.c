@@ -46,6 +46,8 @@
 
 #define TEAMD_STATE_PATH "/run/train/lag"
 
+#define TTDP_MAX_LINES_PER_AGG 4
+
 static int mkpathdir(char *file_path, mode_t mode)
 {
 	char *p;
@@ -132,7 +134,7 @@ int lag_state_write_line_status(struct teamd_context *ctx, void *priv) {
 
 	char path[PATH_MAX] = {'\0'};
 	uint8_t port_status;
-	for (int i = 0; i < 4; i++) {
+	for (int i = 0; i < TTDP_MAX_LINES_PER_AGG; i++) {
 		memset(path, 0, sizeof(path));
 		snprintf(path, sizeof(path), "line/%c/status", 'A' + i);
 		state_fp = open_lag_state_file(ctx->team_devname, path, "w");
@@ -143,7 +145,7 @@ int lag_state_write_line_status(struct teamd_context *ctx, void *priv) {
 		if (port_status == 0) {
 			/* To make sure we don't write uninitialized data, make sure we write
 			 * "UNDEFINED" (3) instead of "ERROR" (0). */
-			port_status = 3;
+			port_status = TTDP_LOGIC_UNDEFINED;
 		}
 		fprintf(state_fp, "%" PRIu8 "\n", port_status);
 		fclose(state_fp);
@@ -164,11 +166,11 @@ int lag_state_write_line_status(struct teamd_context *ctx, void *priv) {
 			return -1;
 		}
 		if (i >= TTDP_MAX_PORTS_PER_TEAM) {
-			fprintf(state_fp, "%d\n", 0);
+			fprintf(state_fp, "%d\n", TTDP_PORT_STATE_DISABLED);
 		} else if (ab->is_discarding) {
-			fprintf(state_fp, "%d\n", 3);
+			fprintf(state_fp, "%d\n", TTDP_PORT_STATE_DISCARDING);
 		} else {
-			fprintf(state_fp, "%d\n", 2);
+			fprintf(state_fp, "%d\n", TTDP_PORT_STATE_FORWARDING);
 		}
 		fclose(state_fp);
 	}
