@@ -260,7 +260,7 @@ static int detect_reappearing_lengthening(struct teamd_context *ctx,
 	}
 	return 0;
 }
-
+/* FIXME is this sane? */
 static int detect_neigh_node_recovery(struct teamd_context *ctx,
 	struct ab* ab) {
 	/* If a neighbor node with the same topocount as we have has come up
@@ -283,6 +283,7 @@ static int detect_neigh_node_recovery(struct teamd_context *ctx,
 	if ((!is_neighbor_none(&ab->elected_neighbor))
 		/* the condition below is not checked by WeOS4!  */
 		&& (ab->elected_neighbor.neighbor_topocount == ab->fixed_etb_topo_counter)
+		&& (ab->fixed_etb_topo_counter)
 		&& (!port_has_non_inhibited_neighbor)
 		) {
 		if (memcmp(&ab->local_uuid, &ab->elected_neighbor.neighbor_uuid,
@@ -293,7 +294,8 @@ static int detect_neigh_node_recovery(struct teamd_context *ctx,
 			teamd_ttdp_log_infox(ctx->team_devname, "Neighbor node recovery detected - remote consist "
 				"with agreeing topocount.");
 		}
-		return 1;
+		/* disabled for now, as the usefulness of this is unclear */
+		// return 1;
 	}
 	// /* otherwise, if we lost and then recovered the same node, we may also
 	//  * accept it. */
