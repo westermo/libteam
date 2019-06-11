@@ -2314,7 +2314,7 @@ static int ab_init(struct teamd_context *ctx, void *priv)
 	ab->etb_topo_counter = 0xFFFFFFFF;
 	ab->port_statuses_b = 0xFF;
 	ab->inhibition_flag_local = 0;
-	ab->inhibition_flag_any = 2;
+	ab->inhibition_flag_any = 0;
 	ab->inhibition_flag_neighbor = 0;
 	ab->inhibition_flag_remote_consist = 0;
 	ab->aggregate_status = TTDP_AGG_STATE_DEFAULT;
