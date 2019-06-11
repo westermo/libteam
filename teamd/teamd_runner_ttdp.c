@@ -89,8 +89,8 @@ static struct timespec ttdp_runner_oneshot_timer = {
 static const char* ttdp_runner_periodic_neighbor_macs_name = 
 	"ttdp_runner_periodic_neighbor_macs";
 static struct timespec ttdp_runner_periodic_neighbor_macs_timer = {
-	.tv_sec = 0,
-	.tv_nsec = 1000000000 /* 1 s */
+	.tv_sec = 1,
+	.tv_nsec = 0 /* 1 s */
 };
 
 static const char* port_state_strings[] = {"ERROR", "FALSE", " TRUE", "UNDEF"};
