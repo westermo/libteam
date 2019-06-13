@@ -294,8 +294,7 @@ static int detect_neigh_node_recovery(struct teamd_context *ctx,
 			teamd_ttdp_log_infox(ctx->team_devname, "Neighbor node recovery detected - remote consist "
 				"with agreeing topocount.");
 		}
-		/* disabled for now, as the usefulness of this is unclear */
-		// return 1;
+		return 1;
 	}
 	// /* otherwise, if we lost and then recovered the same node, we may also
 	//  * accept it. */
