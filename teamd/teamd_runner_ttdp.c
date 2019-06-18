@@ -90,8 +90,8 @@ static struct timespec ttdp_runner_oneshot_timer = {
 static const char* ttdp_runner_periodic_neighbor_macs_name = 
 	"ttdp_runner_periodic_neighbor_macs";
 static struct timespec ttdp_runner_periodic_neighbor_macs_timer = {
-	.tv_sec = 0,
-	.tv_nsec = 1000000000 /* 1 s */
+	.tv_sec = 1,
+	.tv_nsec = 0 /* 1 s */
 };
 
 static const char* port_state_strings[] = {"ERROR", "FALSE", " TRUE", "UNDEF"};
@@ -263,6 +263,7 @@ static int detect_reappearing_lengthening(struct teamd_context *ctx,
 	return 0;
 }
 
+/* FIXME is this sane? */
 static int detect_neigh_node_recovery(struct teamd_context *ctx,
 	struct ab* ab) {
 	/* If a neighbor node with the same topocount as we have has come up
@@ -285,6 +286,7 @@ static int detect_neigh_node_recovery(struct teamd_context *ctx,
 	if ((!is_neighbor_none(&ab->elected_neighbor))
 		/* the condition below is not checked by WeOS4!  */
 		&& (ab->elected_neighbor.neighbor_topocount == ab->fixed_etb_topo_counter)
+		&& (ab->fixed_etb_topo_counter)
 		&& (!port_has_non_inhibited_neighbor)
 		) {
 		if (memcmp(&ab->local_uuid, &ab->elected_neighbor.neighbor_uuid,
@@ -2302,7 +2304,7 @@ static int ab_init(struct teamd_context *ctx, void *priv)
 	ab->etb_topo_counter = 0xFFFFFFFF;
 	ab->port_statuses_b = 0xFF;
 	ab->inhibition_flag_local = 0;
-	ab->inhibition_flag_any = 2;
+	ab->inhibition_flag_any = 0;
 	ab->inhibition_flag_neighbor = 0;
 	ab->inhibition_flag_remote_consist = 0;
 	ab->aggregate_status = TTDP_AGG_STATE_DEFAULT;
@@ -2351,6 +2353,8 @@ static void ab_fini(struct teamd_context *ctx, void *priv)
 
 	teamd_state_val_unregister(ctx, &ab_state_vg, ab);
 	teamd_event_watch_unregister(ctx, &ab_event_watch_ops, ab);
+
+	socket_close(ctx, ab);
 }
 
 const struct teamd_runner teamd_runner_ttdp = {
