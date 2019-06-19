@@ -48,7 +48,7 @@
 
 #define teamd_log_err(args...) daemon_log(LOG_ERR, ##args)
 #define teamd_log_warn(args...) daemon_log(LOG_WARNING, ##args)
-#define teamd_log_info(args...) daemon_log(LOG_INFO, ##args)
+#define teamd_log_info(args...) daemon_log(LOG_DEBUG, ##args)
 #ifdef DEBUG
 #define teamd_log_dbg(args...) daemon_log(LOG_DEBUG, ##args)
 #else
