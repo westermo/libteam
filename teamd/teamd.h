@@ -49,7 +49,11 @@
 #define teamd_log_err(args...) daemon_log(LOG_ERR, ##args)
 #define teamd_log_warn(args...) daemon_log(LOG_WARNING, ##args)
 #define teamd_log_info(args...) daemon_log(LOG_INFO, ##args)
+#ifdef DEBUG
 #define teamd_log_dbg(args...) daemon_log(LOG_DEBUG, ##args)
+#else
+#define teamd_log_dbg(args...) do {} while (0)
+#endif
 
 #define teamd_log_dbgx(ctx, val, args...)	\
 	if (val <= ctx->debug)			\
@@ -269,6 +273,7 @@ extern const struct teamd_runner teamd_runner_random;
 extern const struct teamd_runner teamd_runner_activebackup;
 extern const struct teamd_runner teamd_runner_loadbalance;
 extern const struct teamd_runner teamd_runner_lacp;
+extern const struct teamd_runner teamd_runner_ttdp;
 
 struct teamd_port_priv {
 	int (*init)(struct teamd_context *ctx, struct teamd_port *tdport,

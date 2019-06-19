@@ -46,6 +46,7 @@
 #include <sys/epoll.h>
 #include <time.h>
 #include <netlink/netlink.h>
+#include <netlink/route/link/bridge.h>
 #include <netlink/genl/genl.h>
 #include <netlink/genl/ctrl.h>
 #include <netlink/cli/utils.h>
@@ -53,6 +54,7 @@
 #include <linux/if_team.h>
 #include <linux/types.h>
 #include <linux/filter.h>
+#include <linux/genetlink.h>
 #include <team.h>
 #include <private/list.h>
 #include <private/misc.h>
@@ -1711,7 +1713,59 @@ int team_link_set(struct team_handle *th, int ifindex, bool link_up)
        return -EOPNOTSUPP;
 #endif
 }
+/*
+TEAM_EXPORT
+int team_link_state_set(struct team_handle *th, int ifindex, int new_state) {
+#ifdef HAVE_RTNL_LINK_SET_CARRIER
+	int err = 0;
+	char ifname[16];
+	struct nl_sock *sk;
+	struct nl_cache *brcache;
+	struct rtnl_link *link;
 
+	team_ifindex2ifname(th, ifindex, ifname, 16);
+
+	sk = nl_socket_alloc();
+	if (!sk)
+		return -ENOMEM;
+
+	err = nl_connect(sk, NETLINK_ROUTE);
+	if (err)
+		goto free_sock;
+
+	err = rtnl_link_alloc_cache(sk, AF_BRIDGE, &brcache);
+	if (err)
+		goto free_sock;
+
+	link = rtnl_link_get_by_name(brcache, ifname);
+	if (!link) {
+		err = -NLE_NODEV;
+		goto free_cache;
+	}
+
+	rtnl_link_bridge_set_port_state(link, new_state);
+
+	err = rtnl_link_change(sk, link, link, NLM_F_REPLACE);
+	info(th, "...result %d", err);
+	err = -nl2syserr(err);
+
+	rtnl_link_put(link);
+
+	free_cache:
+		nl_cache_free(brcache);
+	free_sock:
+		nl_socket_free(sk);
+
+	if (err)
+		warn(th, "NETLINK: could not set state %d on %s", new_state, ifname);
+
+		return err;
+
+#else
+       return -EOPNOTSUPP;
+#endif
+}
+*/
 /**
  * @param th		libteam library context
  * @param ifindex	interface index
