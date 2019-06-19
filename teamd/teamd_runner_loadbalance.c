@@ -27,12 +27,43 @@ struct lb {
 	struct teamd_balancer *tb;
 };
 
-static int lb_event_watch_port_added(struct teamd_context *ctx,
-				     struct teamd_port *tdport, void *priv)
+struct lb_port {
+	struct teamd_port *tdport;
+	struct {
+		bool link_up;
+#define		LB_DFLT_PORT_STATE true
+	} cfg;
+};
+
+static int lb_port_load_config(struct teamd_context *ctx,
+			       struct lb_port *lb_port)
 {
-	struct lb *lb = priv;
+	const char *port_name = lb_port->tdport->ifname;
 	int err;
 
+	err = teamd_config_bool_get(ctx, &lb_port->cfg.link_up,
+				    "$.ports.%s.link_up", port_name);
+	if (err)
+		lb_port->cfg.link_up = LB_DFLT_PORT_STATE;
+	teamd_log_dbg("%s: Using link_up \"%d\".", port_name,
+		      lb_port->cfg.link_up);
+	return 0;
+}
+
+static int lb_port_added(struct teamd_context *ctx,
+			 struct teamd_port *tdport,
+			 void *priv, void *creator_priv)
+{
+	struct lb_port *lb_port = priv;
+	struct lb *lb = creator_priv;
+	int err;
+
+	lb_port->tdport = tdport;
+	err = lb_port_load_config(ctx, lb_port);
+	if (err) {
+		teamd_log_err("Failed to load port config.");
+		return err;
+	}
 	err = team_hwaddr_set(ctx->th, tdport->ifindex, ctx->hwaddr,
 			      ctx->hwaddr_len);
 	if (err) {
@@ -49,7 +80,22 @@ static int lb_event_watch_port_added(struct teamd_context *ctx,
 			return TEAMD_ENOENT(err) ? 0 : err;
 		}
 	}
+	team_link_set(ctx->th, tdport->ifindex, lb_port->cfg.link_up);
+
 	return teamd_balancer_port_added(lb->tb, tdport);
+}
+
+static const struct teamd_port_priv lb_port_priv = {
+	.init = lb_port_added,
+	.priv_size = sizeof(struct lb_port),
+};
+
+static int lb_event_watch_port_added(struct teamd_context *ctx,
+				     struct teamd_port *tdport, void *priv)
+{
+	struct lb *lb = priv;
+
+	return teamd_port_priv_create(tdport, &lb_port_priv, lb);
 }
 
 static void lb_event_watch_port_removed(struct teamd_context *ctx,
