@@ -102,6 +102,7 @@ struct teamd_context {
 	bool				force_recreate;
 	bool				take_over;
 	bool				no_quit_destroy;
+	bool				no_team_destroy;
 	bool				init_no_ports;
 	bool				pre_add_ports;
 	char *				config_file;
