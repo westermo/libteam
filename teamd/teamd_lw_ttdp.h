@@ -250,6 +250,14 @@ struct ttdp_neighbor {
 	uint8_t neighbor_inhibition_state;
 };
 
+/* Structure for holding statistics hello frames and fast mode activation */
+struct hello_stats {
+	uint32_t sent_hello_frames;
+	uint32_t recv_hello_frames;
+	uint32_t local_fast_activated;
+	uint32_t remote_fast_activated;
+};
+
 /* Private data for one runner/aggregate. Nevermind the name, this used to be
  * the activebackup runner at one point. */
 struct ab {
@@ -403,6 +411,11 @@ struct ab {
 	uint32_t latest_line_fast_timeout_ms;
 	uint32_t latest_line_slow_timeout_ms;
 	void*(*line_timeout_value_update_func)(void*,void*);
+
+	/* The values in this struct are exposed as state variables, per line, and
+	 * holds counters for how many HELLO frames have been sent/received and
+	 * how many times fast mode has been activated. */
+	struct hello_stats lines_hello_stats[4];
 
 	/* Child lws can call this function to notify us that a line state has changed,
 	 * in cases that it does not happen automatically due to a port changing

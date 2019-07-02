@@ -241,6 +241,9 @@ static int teamd_state_val_dump(struct teamd_context *ctx,
 	case TEAMD_STATE_ITEM_TYPE_INT:
 		val_json_obj = json_integer(gsc.data.int_val);
 		break;
+	case TEAMD_STATE_ITEM_TYPE_UINT32:
+		val_json_obj = json_integer(gsc.data.uint32_val);
+		break;
 	case TEAMD_STATE_ITEM_TYPE_STRING:
 		val_json_obj = json_string(gsc.data.str_val.ptr);
 		if (gsc.data.str_val.free)
@@ -366,6 +369,9 @@ int teamd_state_item_value_get(struct teamd_context *ctx, const char *item_path,
 	case TEAMD_STATE_ITEM_TYPE_INT:
 		ret = asprintf(p_value, "%d", gsc.data.int_val);
 		break;
+	case TEAMD_STATE_ITEM_TYPE_UINT32:
+		ret = asprintf(p_value, "%"PRIu32, gsc.data.uint32_val);
+		break;
 	case TEAMD_STATE_ITEM_TYPE_STRING:
 		ret = asprintf(p_value, "%s", gsc.data.str_val.ptr);
 		if (gsc.data.str_val.free)
@@ -397,6 +403,14 @@ int __set_int_val(struct team_state_gsc *gsc, const char *value)
 	if (val < INT_MIN || val > INT_MAX)
 		return -ERANGE;
 	gsc->data.int_val = val;
+	return 0;
+}
+
+int __set_uint32_val(struct team_state_gsc *gsc, const char *value)
+{
+	int num_parsed = sscanf(value, "%"SCNu32, &gsc->data.uint32_val);
+	if (num_parsed != 1)
+		return -ERANGE;
 	return 0;
 }
 
@@ -434,6 +448,11 @@ int teamd_state_item_value_set(struct teamd_context *ctx, const char *item_path,
 		if (err)
 			return err;
 		break;
+	case TEAMD_STATE_ITEM_TYPE_UINT32:
+		err = __set_uint32_val(&gsc, value);
+		if (err)
+			return err;
+	break;
 	case TEAMD_STATE_ITEM_TYPE_STRING:
 		gsc.data.str_val.ptr = value;
 		break;

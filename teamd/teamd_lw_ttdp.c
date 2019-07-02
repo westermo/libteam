@@ -1112,6 +1112,8 @@ static int lw_ttdp_send_fast(struct teamd_context *ctx, int events, void *priv) 
 	int err = teamd_sendto(ttdp_ppriv->start.psr.sock, &frame, sizeof(frame),
 	 		    0, (struct sockaddr *) &ll_dest,
 	 		    sizeof(ll_dest));
+	struct ab *ab = ctx->runner_priv;
+	ab->lines_hello_stats[ttdp_ppriv->line].sent_hello_frames++;
 	//fprintf(stderr, "ttdp lw: lw_ttdp_send result %d\n", err);
 	return err;
 }
@@ -1142,6 +1144,8 @@ static int lw_ttdp_send(struct teamd_context *ctx, int events, void *priv) {
 	int err = teamd_sendto(ttdp_ppriv->start.psr.sock, &frame, sizeof(frame),
 	 		    0, (struct sockaddr *) &ll_dest,
 	 		    sizeof(ll_dest));
+	struct ab *ab = ctx->runner_priv;
+	ab->lines_hello_stats[ttdp_ppriv->line].sent_hello_frames++;
 	//fprintf(stderr, "ttdp lw: lw_ttdp_send result %d\n", err);
 	return err;
 }
@@ -1157,6 +1161,7 @@ static void ttdp_stop_slow_send_timer(struct teamd_context *ctx,
 
 static inline void ttdp_start_fast_send_timer(struct teamd_context *ctx,
 	struct lw_ttdp_port_priv *ttdp_ppriv) {
+	struct ab *ab = ctx->runner_priv;
 	if (ttdp_ppriv->local_slow_timer_started) {
 		ttdp_stop_slow_send_timer(ctx, ttdp_ppriv);
 	}
@@ -1169,6 +1174,7 @@ static inline void ttdp_start_fast_send_timer(struct teamd_context *ctx,
 			lw_ttdp_send_fast,
 			&(ttdp_ppriv->fast_interval),
 			(ttdp_ppriv->initial_fast_interval));
+		ab->lines_hello_stats[ttdp_ppriv->line].local_fast_activated++;
 	}
 	teamd_loop_callback_enable(ctx, TTDP_PERIODIC_FAST_SEND_CB_NAME, ttdp_ppriv);
 	ttdp_ppriv->local_fast_timer_started = true;
@@ -1367,6 +1373,10 @@ static void store_hello_frame(struct ttdp_hello_tlv* data) {
 	hello_data_storage_next_idx = (hello_data_storage_next_idx + 1) % RINGBUF_SIZE;
 }
 
+static struct ttdp_hello_tlv *get_latest_hello_frame(void) {
+	return &hello_data_storage[(hello_data_storage_next_idx - 1) % RINGBUF_SIZE];
+}
+
 static int ttdp_frame_is_peer_status_ok(struct ttdp_hello_tlv* hello_recv) {
 	/* return 0 if the peer claims he can hear us */
 
@@ -1417,6 +1427,8 @@ static int lw_ttdp_receive(struct teamd_context *ctx, int events, void *priv) {
 	/* FIXME this should maybe be decoupled from _recv and not done immediately */
 	/* see ab_state_active_port_set() in teamd_runner_activebackup.c */
 	if (parse_ttdp_frame(buf, err, &hello_recv, ttdp_ppriv, ctx) == 0) {
+		struct ab* ab = ctx->runner_priv;
+		ab->lines_hello_stats[ttdp_ppriv->line].recv_hello_frames++;
 
 		/* Stop the line status timer until we know what to do */
 		teamd_loop_callback_timer_set(
@@ -1507,6 +1519,9 @@ static int lw_ttdp_receive(struct teamd_context *ctx, int events, void *priv) {
 				&(ttdp_ppriv->slow_timeout));
 			teamd_loop_callback_enable(ctx, TTDP_PERIODIC_SLOW_TIMEOUT_CB_NAME, priv);
 		}
+		struct ttdp_hello_tlv *prev_hello = get_latest_hello_frame();
+		if (prev_hello->timeoutSpeed == 1 && hello_recv.timeoutSpeed == 2)
+			ab->lines_hello_stats[ttdp_ppriv->line].remote_fast_activated++;
 
 		store_hello_frame(&hello_recv);
 
