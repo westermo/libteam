@@ -81,6 +81,8 @@
  * Look for teamd_config_int_get(ctx, &tmp, "@.direction" ...) */
 #define TTDP_MAX_PORTS_PER_TEAM 2
 
+#define TTDP_MAX_LINES 4
+
 #define TTDP_LOGIC_FALSE 1
 #define TTDP_LOGIC_TRUE 2
 #define TTDP_LOGIC_UNDEFINED 3
@@ -415,7 +417,7 @@ struct ab {
 	/* The values in this struct are exposed as state variables, per line, and
 	 * holds counters for how many HELLO frames have been sent/received and
 	 * how many times fast mode has been activated. */
-	struct hello_stats lines_hello_stats[4];
+	struct hello_stats lines_hello_stats[TTDP_MAX_LINES];
 
 	/* Child lws can call this function to notify us that a line state has changed,
 	 * in cases that it does not happen automatically due to a port changing

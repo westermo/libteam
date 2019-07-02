@@ -2367,7 +2367,7 @@ static int ab_init(struct teamd_context *ctx, void *priv)
 		teamd_log_err("Failed to register state value group.");
 		goto event_watch_unregister;
 	}
-	for (int i = 0; i < 4; i++) {
+	for (int i = 0; i < TTDP_MAX_LINES; i++) {
 		err = teamd_state_val_register_ex(ctx, &lines_stats_vg, &ab->lines_hello_stats[i], NULL, "runner.lines_stats.%c", 'a' + i);
 		if (err) {
 			teamd_log_err("Failed to register state value group (line_stats line %c).", 'A' + i);
