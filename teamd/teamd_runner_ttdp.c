@@ -2185,6 +2185,77 @@ void* line_status_update(void* c, void* a) {
 	return NULL;
 }
 
+static int ttdp_lines_stats_sent_hello_frames_get(struct teamd_context *ctx,
+												  struct team_state_gsc *gsc,
+												  void *priv) {
+	struct hello_stats *stats = priv;
+	gsc->data.uint32_val = stats->sent_hello_frames;
+	return 0;
+}
+
+static int ttdp_lines_stats_recv_hello_frames_get(struct teamd_context *ctx,
+												  struct team_state_gsc *gsc,
+												  void *priv) {
+	struct hello_stats *stats = priv;
+	gsc->data.uint32_val = stats->recv_hello_frames;
+	return 0;
+}
+
+static int ttdp_lines_stats_local_fast_mode_get(struct teamd_context *ctx,
+												struct team_state_gsc *gsc,
+												void *priv) {
+	struct hello_stats *stats = priv;
+	gsc->data.uint32_val = stats->local_fast_activated;
+	return 0;
+}
+
+static int ttdp_lines_stats_remote_fast_mode_get(struct teamd_context *ctx,
+												 struct team_state_gsc *gsc,
+												 void *priv) {
+	struct hello_stats *stats = priv;
+	gsc->data.uint32_val = stats->remote_fast_activated;
+	return 0;
+}
+
+static const struct teamd_state_val lines_stats_state_vals[] = {
+	/* Number of HELLO frames sent on a line. Read-only. */
+	{
+		.subpath = "hello_frames_sent",
+		.type = TEAMD_STATE_ITEM_TYPE_UINT32,
+		.getter = ttdp_lines_stats_sent_hello_frames_get,
+		.setter = ttdp_runner_noop_setter
+	},
+	/* Number of HELLO frames received on a line. Read-only. */
+	{
+		.subpath = "hello_frames_recv",
+		.type = TEAMD_STATE_ITEM_TYPE_UINT32,
+		.getter = ttdp_lines_stats_recv_hello_frames_get,
+		.setter = ttdp_runner_noop_setter
+	},
+	/* Number of times fast mode has been activated by this instance on a line.
+	* Read-only. */
+	{
+		.subpath = "fast_mode_local_activated",
+		.type = TEAMD_STATE_ITEM_TYPE_UINT32,
+		.getter = ttdp_lines_stats_local_fast_mode_get,
+		.setter = ttdp_runner_noop_setter
+	},
+	/* Number of times fast mode has been activated by a peer on a line.
+	* Read-only. */
+	{
+		.subpath = "fast_mode_remote_activated",
+		.type = TEAMD_STATE_ITEM_TYPE_UINT32,
+		.getter = ttdp_lines_stats_remote_fast_mode_get,
+		.setter = ttdp_runner_noop_setter
+	}
+};
+
+static const struct teamd_state_val lines_stats_vg = {
+	.vals = lines_stats_state_vals,
+	.vals_count = ARRAY_SIZE(lines_stats_state_vals),
+};
+
+
 void* line_timeout_update(void* c, void* a) {
 	struct teamd_context* ctx = c;
 	struct ab* ab = a;
@@ -2296,6 +2367,13 @@ static int ab_init(struct teamd_context *ctx, void *priv)
 		teamd_log_err("Failed to register state value group.");
 		goto event_watch_unregister;
 	}
+	for (int i = 0; i < TTDP_MAX_LINES; i++) {
+		err = teamd_state_val_register_ex(ctx, &lines_stats_vg, &ab->lines_hello_stats[i], NULL, "runner.lines_stats.%c", 'a' + i);
+		if (err) {
+			teamd_log_err("Failed to register state value group (line_stats line %c).", 'A' + i);
+			goto event_watch_unregister;
+		}
+	}
 	teamd_workq_init_work(&ab->link_watch_handler_workq,
 			    ab_link_watch_handler_work);
 	teamd_workq_init_work(&ab->tcnd_notify_tcnd_workq,
@@ -2318,6 +2396,7 @@ static int ab_init(struct teamd_context *ctx, void *priv)
 	ab->inhibition_flag_remote_consist = 0;
 	ab->aggregate_status = TTDP_AGG_STATE_DEFAULT;
 	ab->remote_inhibition_actual = 3;
+	memset(&ab->lines_hello_stats[0], 0, sizeof(ab->lines_hello_stats));
 
 	memset(ab->neighbor_lines, '-', sizeof(ab->neighbor_lines));
 

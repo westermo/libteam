@@ -25,6 +25,7 @@
 enum teamd_state_val_type {
 	TEAMD_STATE_ITEM_TYPE_NODE = 0,
 	TEAMD_STATE_ITEM_TYPE_INT,
+	TEAMD_STATE_ITEM_TYPE_UINT32,
 	TEAMD_STATE_ITEM_TYPE_STRING,
 	TEAMD_STATE_ITEM_TYPE_BOOL,
 };
@@ -32,6 +33,7 @@ enum teamd_state_val_type {
 struct team_state_gsc {
 	union {
 		int int_val;
+		uint32_t uint32_val;
 		struct {
 			const char *ptr;
 			bool free;
