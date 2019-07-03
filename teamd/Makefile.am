@@ -28,4 +28,4 @@ noinst_HEADERS = teamd.h teamd_workq.h teamd_bpf_chef.h teamd_ctl.h \
 		 teamd_json.h teamd_dbus.h teamd_zmq.h teamd_usock.h \
 		 teamd_dbus_common.h teamd_usock_common.h teamd_config.h \
 		 teamd_state.h teamd_phys_port_check.h teamd_link_watch.h \
-		 teamd_zmq_common.h
+		 teamd_zmq_common.h teamd_lw_ttdp.h teamd_runner_ttdp_ipc.h

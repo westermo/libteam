@@ -20,4 +20,4 @@ teamdagentd_SOURCES=snmp/teamdagentd.c snmp/dot3_ad_agg_table.c \
 	      snmp/dot3_ad_agg_port_list_table.c snmp/dot3_ad_agg_port_table.c
 
 bin_SCRIPTS = bond2team
-EXTRA_DIST = bond2team
+EXTRA_DIST = bond2team snmp
