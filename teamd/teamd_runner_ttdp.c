@@ -37,7 +37,6 @@
 #include "teamd_state.h"
 #include "teamd_workq.h"
 #include "teamd_lw_ttdp.h"
-#include "teamd_runner_ttdp_ipc.h"
 #include "teamd_lag_state_persistence.h"
 
 /* This code is based on the the activebackup runner, with IEC61375-specific
@@ -357,7 +356,7 @@ static void move_to_aggregate_state(struct teamd_context *ctx,
 	lag_state_write_aggregate_role(ctx, ab);
 }
 
-uint8_t update_aggregate_state(struct teamd_context *ctx,
+static uint8_t update_aggregate_state(struct teamd_context *ctx,
 	struct ab* ab) {
 	uint8_t current = ab->aggregate_status;
 	uint8_t next = current;
@@ -1012,7 +1011,6 @@ static int ab_link_watch_handler_internal(struct teamd_context *ctx, struct ab *
 		 	 * and notify tcnd if it's changed. */
 			if (elect_neighbor(ctx, ab, ab->neighbor_agreement) != 0) {
 				/* Notify tcnd that something has changed */
-				prepare_tcnd_update_message(ctx, ab);
 
 				//if (ab->silent == TTDP_NOT_SILENT) {
 					lag_state_write_elected_neighbor(ctx, ab);
@@ -1059,8 +1057,6 @@ static int ab_link_watch_handler_internal(struct teamd_context *ctx, struct ab *
 	 * and notify tcnd if it's changed. */
 	if (elect_neighbor(ctx, ab, ab->neighbor_agreement) != 0) {
 		/* Notify tcnd that something has changed */
-		prepare_tcnd_update_message(ctx, ab);
-
 		teamd_ttdp_log_infox(ctx->team_devname, "Writing elected neighbor to state file.");
 		lag_state_write_elected_neighbor(ctx, ab);
 	}
@@ -1516,6 +1512,13 @@ static int ab_state_active_port_set(struct teamd_context *ctx,
 	return 0;
 }
 
+static int send_tcnd_update_message_work(struct teamd_context *ctx,
+				      struct teamd_workq *workq) {
+	struct ab *ab;
+	ab = get_container(workq, struct ab, link_watch_handler_workq);
+	return lag_state_write_elected_neighbor(ctx, ab);
+}
+
 static int link_state_update_work(struct teamd_context *ctx,
 				   struct teamd_workq *workq) {
 	struct ab *ab;
@@ -1794,7 +1797,6 @@ static int ttdp_neighbor_data_req_set(struct teamd_context *ctx,
 				    void *priv) {
 	struct ab *ab = priv;
 	teamd_ttdp_log_infox(ctx->team_devname, "Neighbor data update requested by statevar");
-	prepare_tcnd_update_message(ctx, ab);
 	lag_state_write_elected_neighbor(ctx, ab);
 	return 0;
 }
@@ -2217,11 +2219,6 @@ static int on_initial_timer(struct teamd_context *ctx, int events, void *priv) {
 		if (err < 0)
 			err2 += err;
 
-		// err = send_tcnd_role_message(ctx, priv);
-		// teamd_ttdp_log_infox(ctx->team_devname, "Sent role info to TCNd: %d", err);
-		// if (err < 0)
-		// 	err2 += err;
-
 		err = lag_state_write_line_status(ctx, priv);
 		teamd_ttdp_log_infox(ctx->team_devname, "Wrote line status to state file: %d", err);
 		if (err < 0)
@@ -2299,8 +2296,6 @@ static int ab_init(struct teamd_context *ctx, void *priv)
 				send_link_timeout_update_work);
 
 	memset(ab->port_statuses, 3, 4);
-	strcpy(ab->tcnd_sock_filename, "/tmp/tcnd.sock");
-	ab->tcnd_sockfd = 0;
 	ab->etb_topo_counter = 0xFFFFFFFF;
 	ab->port_statuses_b = 0xFF;
 	ab->inhibition_flag_local = 0;
@@ -2353,8 +2348,6 @@ static void ab_fini(struct teamd_context *ctx, void *priv)
 
 	teamd_state_val_unregister(ctx, &ab_state_vg, ab);
 	teamd_event_watch_unregister(ctx, &ab_event_watch_ops, ab);
-
-	socket_close(ctx, ab);
 }
 
 const struct teamd_runner teamd_runner_ttdp = {

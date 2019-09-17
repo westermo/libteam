@@ -389,15 +389,6 @@ struct ab {
 	 * set by the statevar getter. */
 	char port_statuses_str[(9*4)+1];
 
-	/* socket used to communicate with IPC */
-	int tcnd_sockfd;
-	/* backing filename used for the socket */
-	char tcnd_sock_filename[108];
-
-	/* Buffer for the IPC neighbor update message. Used when transmitting. */
-	uint8_t tcnd_next_update_message[4+1+6];
-	/* No buffer is used for the IPC line status update message. */
-
 	/* These values are used e.g. for SNMP. Since the MIB only wants one instance
 	 * of each of these values, while they are individually configurable in each
 	 * link watcher, we will just go with the latest. Each child linkwatcher sets
