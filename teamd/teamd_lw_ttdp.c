@@ -1066,14 +1066,14 @@ static void ttdp_insert_checksum(struct ttdp_hello_tlv* tlv) {
 	 * after the checksum to the last TLV word, both included" */
 	size_t checksummed_length =
 		((uint8_t*)&(tlv->cstUUid)+sizeof(tlv->cstUUid)) - (uint8_t*)&(tlv->version);
-	tlv->tlvCS = frame_checksum((uint8_t*)&(tlv->version), checksummed_length, 0, 1);
+	tlv->tlvCS = htons(frame_checksum((uint8_t*)&(tlv->version), checksummed_length, 0, 1));
 }
 
 static int ttdp_verify_checksum(struct ttdp_hello_tlv* tlv, struct lw_ttdp_port_priv *ttdp_ppriv) {
 	size_t checksummed_length =
 		((uint8_t*)&(tlv->cstUUid)+sizeof(tlv->cstUUid)) - (uint8_t*)&(tlv->version);
 	uint16_t calc = frame_checksum((uint8_t*)&(tlv->version), checksummed_length, 0, 0);
-	if (calc != tlv->tlvCS) {
+	if (calc != ntohs(tlv->tlvCS)) {
 		teamd_ttdp_log_infox(ttdp_ppriv, "HELLO TLV checksum mismatch: got %04hX, expected %04hX", tlv->tlvCS, calc);
 		return 1;
 	}
