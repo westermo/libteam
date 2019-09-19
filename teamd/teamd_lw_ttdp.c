@@ -1048,6 +1048,8 @@ static void construct_default_frame(struct ab* parent, struct lw_ttdp_port_priv 
 	uint8_t inhibit_any = (parent->inhibition_flag_local | parent->inhibition_flag_any);
 	out->hello_tlv.inaugInhibition = inhibit_any;// | parent->inhibition_flag_remote);
 	/* fix the "ANTIVALENT" insanity */
+	if (out->hello_tlv.inaugInhibition == 0)
+		out->hello_tlv.inaugInhibition = TTDP_LOGIC_FALSE;
 	if (out->hello_tlv.inaugInhibition != TTDP_LOGIC_FALSE)
 		out->hello_tlv.inaugInhibition = TTDP_LOGIC_TRUE;
 	memcpy(&(out->hello_tlv.remoteId), ttdp_ppriv->neighbor_mac, 6);
