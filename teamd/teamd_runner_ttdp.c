@@ -1056,6 +1056,9 @@ static int ab_link_watch_handler_internal(struct teamd_context *ctx, struct ab *
 	/* Neighbor data is automatically set by my ports. Perform election
 	 * and notify tcnd if it's changed. */
 	if (elect_neighbor(ctx, ab, ab->neighbor_agreement) != 0) {
+		if (allow_update_aggregate_state)
+			update_aggregate_state(ctx, ab);
+
 		/* Notify tcnd that something has changed */
 		teamd_ttdp_log_infox(ctx->team_devname, "Writing elected neighbor to state file.");
 		lag_state_write_elected_neighbor(ctx, ab);
