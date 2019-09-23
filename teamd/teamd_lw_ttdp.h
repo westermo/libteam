@@ -87,6 +87,11 @@
 #define TTDP_LOGIC_TRUE 2
 #define TTDP_LOGIC_UNDEFINED 3
 
+#define TTDP_PORT_STATE_DISABLED 0
+#define TTDP_PORT_STATE_ERROR 1
+#define TTDP_PORT_STATE_FORWARDING 2
+#define TTDP_PORT_STATE_DISCARDING 3
+
 /* private data for a single ttdp port/linkwatcher */
 struct lw_ttdp_port_priv {
 	union {
@@ -393,15 +398,6 @@ struct ab {
 	/* buffer used for the port_statuses statevar, up to 9 chars per port. Also
 	 * set by the statevar getter. */
 	char port_statuses_str[(9*4)+1];
-
-	/* socket used to communicate with IPC */
-	int tcnd_sockfd;
-	/* backing filename used for the socket */
-	char tcnd_sock_filename[108];
-
-	/* Buffer for the IPC neighbor update message. Used when transmitting. */
-	uint8_t tcnd_next_update_message[4+1+6];
-	/* No buffer is used for the IPC line status update message. */
 
 	/* These values are used e.g. for SNMP. Since the MIB only wants one instance
 	 * of each of these values, while they are individually configurable in each
