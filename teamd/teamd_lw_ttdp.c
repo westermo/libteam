@@ -47,7 +47,7 @@
 #include "teamd_workq.h"
 #include "teamd_lw_ttdp.h"
 
-uint16_t frame_checksum(const uint8_t *cp, int len, int cisco, int out);
+uint16_t frame_checksum(const uint8_t *cp, int len);
 
 #define IFNAME_OR_EMPTY(P) ((P && P->start.common.tdport && P->start.common.tdport->ifname)\
 	? P->start.common.tdport->ifname : "ttdp-lw")
@@ -1062,17 +1062,17 @@ static void construct_default_frame(struct ab* parent, struct lw_ttdp_port_priv 
 }
 
 static void ttdp_insert_checksum(struct ttdp_hello_tlv* tlv) {
-/* Calculate HELLO TVL checksum over TLV payload "from first TLV word
-	 * after the checksum to the last TLV word, both included" */
+/* Calculate HELLO TLV checksum over TLV payload "from first TLV word
+ * after the checksum to the last TLV word, both included" */
 	size_t checksummed_length =
 		((uint8_t*)&(tlv->cstUUid)+sizeof(tlv->cstUUid)) - (uint8_t*)&(tlv->version);
-	tlv->tlvCS = htons(frame_checksum((uint8_t*)&(tlv->version), checksummed_length, 0, 1));
+	tlv->tlvCS = htons(frame_checksum((uint8_t*)&(tlv->version), checksummed_length));
 }
 
 static int ttdp_verify_checksum(struct ttdp_hello_tlv* tlv, struct lw_ttdp_port_priv *ttdp_ppriv) {
 	size_t checksummed_length =
 		((uint8_t*)&(tlv->cstUUid)+sizeof(tlv->cstUUid)) - (uint8_t*)&(tlv->version);
-	uint16_t calc = frame_checksum((uint8_t*)&(tlv->version), checksummed_length, 0, 0);
+	uint16_t calc = frame_checksum((uint8_t*)&(tlv->version), checksummed_length);
 	if (calc != ntohs(tlv->tlvCS)) {
 		teamd_ttdp_log_infox(ttdp_ppriv, "HELLO TLV checksum mismatch: got %04hX, expected %04hX", tlv->tlvCS, calc);
 		return 1;
