@@ -262,6 +262,24 @@ static int detect_reappearing_lengthening(struct teamd_context *ctx,
 	return 0;
 }
 
+static int is_topocount_valid(struct ab* ab)
+{
+	int i;
+
+	if (!ab->fixed_etb_topo_counter)
+		return 0;
+
+	if (ab->elected_neighbor.neighbor_topocount == ab->fixed_etb_topo_counter)
+		return 1;
+
+	for (i = 0; i < ab->num_fixed_possible_topocnts; i++) {
+		if (ab->elected_neighbor.neighbor_topocount == ab->fixed_possible_topocnts[i])
+			return 1;
+	}
+
+	return 0;
+}
+
 /* FIXME is this sane? */
 static int detect_neigh_node_recovery(struct teamd_context *ctx,
 	struct ab* ab) {
@@ -274,20 +292,7 @@ static int detect_neigh_node_recovery(struct teamd_context *ctx,
 	 * there is no good way to guarantee that we only get that node, and not any
 	 * nodes that might have appeared behind it. */
 
-	/* only accept if no port has a neighbor who is not inhibited */
-	int port_has_non_inhibited_neighbor = 0;
-	for (int i = 0; i < TTDP_MAX_PORTS_PER_TEAM; ++i) {
-		if (!is_neighbor_none(&ab->neighbors[i])) {
-			port_has_non_inhibited_neighbor |= (ab->neighbors[i].neighbor_inhibition_state != 2);
-		}
-	}
-
-	if ((!is_neighbor_none(&ab->elected_neighbor))
-		/* the condition below is not checked by WeOS4!  */
-		&& (ab->elected_neighbor.neighbor_topocount == ab->fixed_etb_topo_counter)
-		&& (ab->fixed_etb_topo_counter)
-		&& (!port_has_non_inhibited_neighbor)
-		) {
+	if (!is_neighbor_none(&ab->elected_neighbor) && is_topocount_valid(ab)) {
 		if (memcmp(&ab->local_uuid, &ab->elected_neighbor.neighbor_uuid,
 			sizeof(ab->local_uuid)) == 0) {
 			teamd_ttdp_log_infox(ctx->team_devname, "Neighbor node recovery detected - same consist "
@@ -303,6 +308,7 @@ static int detect_neigh_node_recovery(struct teamd_context *ctx,
 	// if (memcmp(&ab->fixed_elected_neighbor, &ab->elected_neighbor,
 	// 	sizeof(ab->fixed_elected_neighbor)) == 0)
 	// 	return 1;
+
 	return 0;
 }
 
@@ -1819,6 +1825,50 @@ static int ttdp_etb_topocount_set(struct teamd_context *ctx,
 		"Set ETB topo count to %#.8x from statevar", ab->etb_topo_counter);
 	return 0;
 }
+
+static int ttdp_etb_topocount_list_get(struct teamd_context *ctx,
+				    struct team_state_gsc *gsc,
+				    void *priv)
+{
+	gsc->data.str_val.ptr = "N/A";
+
+	return 0;
+}
+
+static int ttdp_etb_topocount_list_set(struct teamd_context *ctx,
+				    struct team_state_gsc *gsc,
+				    void *priv)
+{
+	struct ab *ab = priv;
+	FILE *fp;
+	int ret;
+
+	if (!gsc->data.str_val.ptr) {
+		ab->num_fixed_possible_topocnts = 0;
+		return 0;
+	}
+
+	fp = fopen(gsc->data.str_val.ptr, "r");
+	if (!fp)
+		return 0;
+
+	ab->num_fixed_possible_topocnts = 0;
+
+	if (fp) {
+		uint32_t value;
+
+		while((ret = fscanf(fp, "%x", &value)) != EOF) {
+			if (ret != 1)
+				continue;
+
+			ab->fixed_possible_topocnts[ab->num_fixed_possible_topocnts++] = value;
+		}
+		fclose(fp);
+	}
+
+	return 0;
+}
+
 static int ttdp_etb_topocount_str_get(struct teamd_context *ctx,
 				    struct team_state_gsc *gsc,
 				    void *priv) {
@@ -2099,6 +2149,24 @@ static const struct teamd_state_val ab_state_vals[] = {
 		.type = TEAMD_STATE_ITEM_TYPE_STRING,
 		.getter = ttdp_etb_topocount_str_get,
 	},
+	/* Filename (with path) which holds the list of possible topocounts.
+	 * Writing a filename will update this list with the topocounts in the
+	 * file. Writing NULL will delete the stored list. Writing an invalid
+	 * filename will keep the stored list. The file shall contain one
+	 * topocount value on each row and stored as hexadecimal, i.e.:
+	 *   11223344
+	 *   aabbccdd
+	 * The topocount values in this list contains valid topocounts which
+	 * will be used in recovery mode to let a ETBN join the backbone
+	 * again if the ETBN previously was lost.
+	 */
+	{
+		.subpath = "etb_topocount_list",
+		.type = TEAMD_STATE_ITEM_TYPE_STRING,
+		.getter = ttdp_etb_topocount_list_get,
+		.setter = ttdp_etb_topocount_list_set,
+	},
+
 	/* Writing 'true' or 'false' here results in the runner considering itself
 	 * as inaugurated or not inaugurated, respectively. This value comes from
 	 * higher up in the IEC61375 stack (it's set once a logical topology has

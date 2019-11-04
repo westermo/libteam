@@ -1281,7 +1281,7 @@ static int lw_ttdp_fail_recovery_mode(struct teamd_context *ctx, int events, voi
 
 static void fixup_parse_ttdp_frame(struct ttdp_hello_tlv* data) {
 	data->tlvCS = ntohs(data->tlvCS);
-	/* ??? data->etbTopoCnt = ntohl(data->etbTopoCnt); */
+	data->etbTopoCnt = ntohl(data->etbTopoCnt);
 	//data->etbTopoCnt = data->etbTopoCnt;
 	data->lifeSign = ntohl(data->lifeSign);
 	data->version = ntohl(data->version);

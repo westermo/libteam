@@ -372,6 +372,12 @@ struct ab {
 	struct ttdp_neighbor prev_elected_neighbor;
 	/* Set to 1 if our elected_neighbor above is "all zeroes" */
 	int neighbor_is_none;
+	/* List of topocount values. This list contains valid topocounts
+	 * which will be used in recovery mode to let a ETBN join the
+	 * backbone again if a ETBN previously was lost.
+	 */
+	uint32_t fixed_possible_topocnts[63];
+	uint8_t num_fixed_possible_topocnts;
 
 	/* Elected neighbor at the time of the latest positive edge of our parent
 	 * node becoming inhibited (either by local request or due to train
