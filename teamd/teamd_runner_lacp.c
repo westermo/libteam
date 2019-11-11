@@ -1016,9 +1016,9 @@ static int lacp_port_link_update(struct lacp_port *lacp_port)
 		 * to work properly.
 		 */
 		if (linkup && (!duplex == !speed))
-			err = lacp_port_set_state(lacp_port, PORT_STATE_EXPIRED);
+			err = lacp_update_members_of_aggregate(lacp_port, PORT_STATE_EXPIRED); /* Previously err = lacp_port_set_state(lacp_port, PORT_STATE_EXPIRED); */
 		else
-			err = lacp_port_set_state(lacp_port, PORT_STATE_DISABLED);
+			err = lacp_update_members_of_aggregate(lacp_port, PORT_STATE_DISABLED); /* Previously err = lacp_port_set_state(lacp_port, PORT_STATE_DISABLED); */
 		if (err)
 			return err;
 	}
@@ -1082,6 +1082,10 @@ static int lacpdu_recv(struct lacp_port *lacp_port)
 		return 0;
 	}
 
+	/* Don't wake up disabled ports here, let the timer callbacks do that. */
+	if (lacp_port->state != PORT_STATE_DISABLED)
+		lacp_update_members_of_aggregate(lacp_port, PORT_STATE_CURRENT);
+
 	/* Check if we have correct info about the other side */
 	if (memcmp(&lacpdu.actor, &lacp_port->partner,
 		   sizeof(struct lacpdu_info))) {
@@ -1093,10 +1097,6 @@ static int lacpdu_recv(struct lacp_port *lacp_port)
 		if (err)
 			return err;
 	}
-
-	err = lacp_port_set_state(lacp_port, PORT_STATE_CURRENT);
-	if (err)
-		return err;
 
 	/* Check if the other side has correct info about us */
 	if (!lacp_port->periodic_on &&
@@ -1123,10 +1123,10 @@ static int lacp_callback_timeout(struct teamd_context *ctx, int events,
 
 	switch (lacp_port_get_state(lacp_port)) {
 	case PORT_STATE_CURRENT:
-		err = lacp_port_set_state(lacp_port, PORT_STATE_EXPIRED);
+		lacp_update_members_of_aggregate(lacp_port, PORT_STATE_EXPIRED); /* Previously err = lacp_port_set_state(lacp_port, PORT_STATE_EXPIRED); */
 		break;
 	case PORT_STATE_EXPIRED:
-		err = lacp_port_set_state(lacp_port, PORT_STATE_DEFAULTED);
+		lacp_update_members_of_aggregate(lacp_port, PORT_STATE_DEFAULTED); /* Previously err = lacp_port_set_state(lacp_port, PORT_STATE_DEFAULTED); */
 		break;
 	case PORT_STATE_DEFAULTED:
 	case PORT_STATE_DISABLED:
@@ -1311,7 +1311,7 @@ static void lacp_port_removed(struct teamd_context *ctx,
 {
 	struct lacp_port *lacp_port = priv;
 
-	lacp_port_set_state(lacp_port, PORT_STATE_DISABLED);
+	lacp_update_members_of_aggregate(lacp_port, PORT_STATE_DISABLED); /* Previously lacp_port_set_state(lacp_port, PORT_STATE_DISABLED); */
 	teamd_loop_callback_del(ctx, LACP_TIMEOUT_CB_NAME, lacp_port);
 	teamd_loop_callback_del(ctx, LACP_PERIODIC_CB_NAME, lacp_port);
 	teamd_loop_callback_del(ctx, LACP_SOCKET_CB_NAME, lacp_port);
