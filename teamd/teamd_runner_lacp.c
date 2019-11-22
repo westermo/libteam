@@ -1110,6 +1110,21 @@ static int lacp_port_link_update(struct lacp_port *lacp_port)
 	uint8_t duplex = team_get_port_duplex(team_port);
 	int err;
 
+	switch (speed) {
+		case 1000:
+			lacp_port->actor.key = 3;
+		break;
+		case 100:
+			lacp_port->actor.key = 2;
+		break;
+		case 10:
+			lacp_port->actor.key = 1;
+		break;
+		default:
+			lacp_port->actor.key = 0;
+		break;
+	}
+
 	if (linkup != lacp_port->__link_last.up ||
 	    duplex != lacp_port->__link_last.duplex) {
 		/* If duplex is 0, meaning half-duplex, it should be set
