@@ -190,110 +190,6 @@ struct lacp_port {
 };
 
 static struct lacp_port *lacp_port_get(struct lacp *lacp,
-				       struct teamd_port *tdport);
-
-static int lacp_port_set_state(struct lacp_port *lacp_port,
-			       enum lacp_port_state new_state);
-
-int lacp_ports_are_same_speed( struct lacp_port *lacp_port, int *best_speed)
-{
-	struct team_port *team_port_iterator;
-	int last_speed = 0;
-	int same_speed = true;
-	int first_port = 1;
-	struct team_ifinfo * ifinfo;
-	int speed;
-
-	*best_speed = 0;
-
-	team_for_each_port(team_port_iterator, lacp_port->ctx->th) {
-		ifinfo = team_get_port_ifinfo(team_port_iterator);
-		speed = team_get_port_speed(team_port_iterator);
-		if (first_port) {
-			last_speed = team_get_port_speed(team_port_iterator);
-			*best_speed = last_speed;
-			first_port = 0;
-		}
-		if (last_speed != team_get_port_speed(team_port_iterator)) {
-			same_speed = false;
-		}
-		last_speed = team_get_port_speed(team_port_iterator);
-		if (last_speed > *best_speed) {
-			*best_speed = last_speed;
-		}
-	}
-
-	return same_speed;
-}
-
-struct lacp_port *lacp_get_lacp_port( struct team_port *team_port_iterator, struct teamd_context *ctx, struct lacp *lacp)
-{
-	struct teamd_port *teamd_port;
-	struct team_ifinfo * ifinfo;
-
-	teamd_for_each_tdport(teamd_port, ctx) {
-		ifinfo = team_get_port_ifinfo(team_port_iterator);
-		if (teamd_port->ifindex == team_get_ifinfo_ifindex(ifinfo)) {
-			return lacp_port_get(lacp, teamd_port);
-		}
-	}
-
-	return NULL;
-}
-
-int lacp_update_members_of_aggregate(struct lacp_port *lacp_port, enum lacp_port_state new_state)
-{
-	struct team_port *team_port_iterator;
-	struct lacp_port *lacp_port_iterator;
-	struct team_ifinfo * ifinfo;
-	int speed;
-	int best_speed = 0;
-
-	ifinfo = team_get_port_ifinfo(lacp_port->tdport->team_port);
-	speed = team_get_port_speed(lacp_port->tdport->team_port);
-
-	/* The first check/pass is to see if there are any ports that are not of the
-	same characteristics. The best speed is returned and can be use in the second
-	pass to disable ports. */
-	if (!lacp_ports_are_same_speed(lacp_port, &best_speed)) {
-		if (best_speed > 0) {
-			/* Second pass starts iterating over all ports in the aggregate. Setting
-			new_state depending on from where we were called, and disabling the other ports. */
-			team_for_each_port(team_port_iterator, lacp_port->ctx->th) {
-				speed = team_get_port_speed(team_port_iterator);
-				ifinfo = team_get_port_ifinfo(team_port_iterator);
-
-				if ((lacp_port_iterator = lacp_get_lacp_port(team_port_iterator, lacp_port->ctx, lacp_port->lacp)) != NULL) {
-					if (speed == best_speed) {
-						if (lacp_port->tdport->ifindex == team_get_ifinfo_ifindex( ifinfo)) {
-							lacp_port_set_state(lacp_port, new_state);
-						}
-						else {
-							if (lacp_port_iterator->state == PORT_STATE_DISABLED) {
-								lacp_port_set_state(lacp_port_iterator, PORT_STATE_CURRENT);
-							}
-							else {
-								// The port is best speed but already in correct state. Doing nothing.
-							}
-						}
-					}
-					else {
-						lacp_port_set_state(lacp_port_iterator, PORT_STATE_DISABLED);
-					}
-				}
-			}
-		}
-	}
-	else {
-		/* I am best speed and will therefore set new_state as intended
-		by the original flow of the code. */
-		lacp_port_set_state(lacp_port, new_state);
-	}
-
-	return true;
-}
-
-static struct lacp_port *lacp_port_get(struct lacp *lacp,
 				       struct teamd_port *tdport)
 {
 	/*
@@ -1135,9 +1031,9 @@ static int lacp_port_link_update(struct lacp_port *lacp_port)
 		 * to work properly.
 		 */
 		if (linkup && (!duplex == !speed))
-			err = lacp_update_members_of_aggregate(lacp_port, PORT_STATE_EXPIRED); /* Previously err = lacp_port_set_state(lacp_port, PORT_STATE_EXPIRED); */
+			err = lacp_port_set_state(lacp_port, PORT_STATE_EXPIRED);
 		else
-			err = lacp_update_members_of_aggregate(lacp_port, PORT_STATE_DISABLED); /* Previously err = lacp_port_set_state(lacp_port, PORT_STATE_DISABLED); */
+			err = lacp_port_set_state(lacp_port, PORT_STATE_DISABLED);
 		if (err)
 			return err;
 	}
@@ -1201,10 +1097,6 @@ static int lacpdu_recv(struct lacp_port *lacp_port)
 		return 0;
 	}
 
-	/* Don't wake up disabled ports here, let the timer callbacks do that. */
-	if (lacp_port->state != PORT_STATE_DISABLED)
-		lacp_update_members_of_aggregate(lacp_port, PORT_STATE_CURRENT);
-
 	/* Check if we have correct info about the other side */
 	if (memcmp(&lacpdu.actor, &lacp_port->partner,
 		   sizeof(struct lacpdu_info))) {
@@ -1216,6 +1108,10 @@ static int lacpdu_recv(struct lacp_port *lacp_port)
 		if (err)
 			return err;
 	}
+
+	err = lacp_port_set_state(lacp_port, PORT_STATE_CURRENT);
+	if (err)
+		return err;
 
 	/* Check if the other side has correct info about us */
 	if (!lacp_port->periodic_on &&
@@ -1242,10 +1138,10 @@ static int lacp_callback_timeout(struct teamd_context *ctx, int events,
 
 	switch (lacp_port_get_state(lacp_port)) {
 	case PORT_STATE_CURRENT:
-		lacp_update_members_of_aggregate(lacp_port, PORT_STATE_EXPIRED); /* Previously err = lacp_port_set_state(lacp_port, PORT_STATE_EXPIRED); */
+		err = lacp_port_set_state(lacp_port, PORT_STATE_EXPIRED);
 		break;
 	case PORT_STATE_EXPIRED:
-		lacp_update_members_of_aggregate(lacp_port, PORT_STATE_DEFAULTED); /* Previously err = lacp_port_set_state(lacp_port, PORT_STATE_DEFAULTED); */
+		err = lacp_port_set_state(lacp_port, PORT_STATE_DEFAULTED);
 		break;
 	case PORT_STATE_DEFAULTED:
 	case PORT_STATE_DISABLED:
@@ -1430,7 +1326,7 @@ static void lacp_port_removed(struct teamd_context *ctx,
 {
 	struct lacp_port *lacp_port = priv;
 
-	lacp_update_members_of_aggregate(lacp_port, PORT_STATE_DISABLED); /* Previously lacp_port_set_state(lacp_port, PORT_STATE_DISABLED); */
+	lacp_port_set_state(lacp_port, PORT_STATE_DISABLED);
 	teamd_loop_callback_del(ctx, LACP_TIMEOUT_CB_NAME, lacp_port);
 	teamd_loop_callback_del(ctx, LACP_PERIODIC_CB_NAME, lacp_port);
 	teamd_loop_callback_del(ctx, LACP_SOCKET_CB_NAME, lacp_port);
