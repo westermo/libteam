@@ -1011,19 +1011,19 @@ static int lacp_port_link_update(struct lacp_port *lacp_port)
 	agg_select_policy to bandwidth at the same time. */
 	switch (speed) {
 		case 10000:
-			lacp_port->actor.key = 5;
+			lacp_port->actor.key = htons(5);
 		break;
 		case 1000:
-			lacp_port->actor.key = 4;
+			lacp_port->actor.key = htons(4);
 		break;
 		case 100:
-			lacp_port->actor.key = 3;
+			lacp_port->actor.key = htons(3);
 		break;
 		case 10:
-			lacp_port->actor.key = 2;
+			lacp_port->actor.key = htons(2);
 		break;
 		default:
-			lacp_port->actor.key = 0;
+			lacp_port->actor.key = htons(0);
 		break;
 	}
 
