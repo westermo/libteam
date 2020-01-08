@@ -1656,7 +1656,7 @@ static int ab_neighbor_etbn_topocnt_get(struct teamd_context *ctx,
 				    void *priv) {
 	struct ab *ab = priv;
 	snprintf(ab->elected_neighbor_topocnt_str, sizeof(ab->elected_neighbor_topocnt_str),
-		"%.8X", htonl(ab->elected_neighbor.neighbor_topocount));
+		"%.8X", ab->elected_neighbor.neighbor_topocount);
 	gsc->data.str_val.ptr = ab->elected_neighbor_topocnt_str;
 	return 0;
 }
@@ -1708,7 +1708,7 @@ static int ab_fixed_neighbor_etbn_topocnt_get(struct teamd_context *ctx,
 				    void *priv) {
 	struct ab *ab = priv;
 	snprintf(ab->fixed_elected_neighbor_topocnt_str, sizeof(ab->fixed_elected_neighbor_topocnt_str),
-		"%.8X", htonl(ab->fixed_elected_neighbor.neighbor_topocount));
+		"%.8X", ab->fixed_elected_neighbor.neighbor_topocount);
 	gsc->data.str_val.ptr = ab->fixed_elected_neighbor_topocnt_str;
 	return 0;
 }
@@ -1874,7 +1874,7 @@ static int ttdp_etb_topocount_str_get(struct teamd_context *ctx,
 				    void *priv) {
 	struct ab *ab = priv;
 	memset(ab->etb_topo_counter_str, 0, sizeof(ab->etb_topo_counter_str));
-	snprintf((char*)(ab->etb_topo_counter_str), sizeof(ab->etb_topo_counter_str)-1, "%#8X", htonl(ab->etb_topo_counter));
+	snprintf((char*)(ab->etb_topo_counter_str), sizeof(ab->etb_topo_counter_str)-1, "%#8X", ab->etb_topo_counter);
 	gsc->data.str_val.ptr = (char*)(ab->etb_topo_counter_str);
 	return 0;
 }

@@ -1027,7 +1027,7 @@ static void construct_default_frame(struct ab* parent, struct lw_ttdp_port_priv 
 	out->hello_tlv.tlvCS = 0; /* Calculated in lw_ttdp_send() / lw_ttdp_send_fast() */
 	out->hello_tlv.version = htonl(0x01000000);
 	out->hello_tlv.lifeSign = htonl((ttdp_ppriv->lifesign)++);
-	out->hello_tlv.etbTopoCnt = parent->etb_topo_counter;
+	out->hello_tlv.etbTopoCnt = htonl(parent->etb_topo_counter);
 
 	/* We must ensure that the vendor string is zero terminated and -padded */
 	memset(out->hello_tlv.vendor, 0, sizeof(out->hello_tlv.vendor));
@@ -2036,7 +2036,7 @@ static int lw_ttdp_local_topocnt_get(struct teamd_context *ctx,
 	struct lw_ttdp_port_priv* ttdp_ppriv = priv;
 	struct ab* ab = ctx->runner_priv;
 	int err = snprintf(ttdp_ppriv->local_topocnt_str, sizeof(ttdp_ppriv->local_topocnt_str),
-		"%.8X", htonl(ab->etb_topo_counter));
+		"%.8X", ab->etb_topo_counter);
 	if (err > 0 && err < sizeof(ttdp_ppriv->local_topocnt_str)) {
 		gsc->data.str_val.ptr = ttdp_ppriv->local_topocnt_str;
 		return 0;
