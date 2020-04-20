@@ -112,23 +112,25 @@ int parse_status_dir (int (*parse_json) (json_t *json_obj))
 	if (!tdc)
 		return -1;
 
-	dir = opendir (TEAMD_RUN_DIR);
+	dir = opendir ("/var/run/");
 	if (dir) {
 		while ((dir_ent = readdir (dir)) != NULL) {
 			if (dir_ent->d_type == DT_REG) {
 				if (strstr (dir_ent->d_name, ".pid")) {
 					ifname = strtok (dir_ent->d_name, ".");
-					err = ifname2ifindex (&ifindex, ifname);
-					if (!err) {
-						err = teamdctl_connect (tdc, ifname, NULL, NULL);
+					if (strstr(ifname, "lag") != NULL) {
+						err = ifname2ifindex (&ifindex, ifname);
 						if (!err) {
-							char *dump = teamdctl_state_get_raw (tdc);
-							err = __jsonload (&dump_json, dump);
-								if (!err) {
-								err = parse_json (dump_json);
-								json_decref (dump_json);
+							err = teamdctl_connect (tdc, ifname, NULL, NULL);
+							if (!err) {
+								char *dump = teamdctl_state_get_raw (tdc);
+								err = __jsonload (&dump_json, dump);
+									if (!err) {
+									err = parse_json (dump_json);
+									json_decref (dump_json);
+								}
+								teamdctl_disconnect (tdc);
 							}
-							teamdctl_disconnect (tdc);
 						}
 					}
 				}
