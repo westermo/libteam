@@ -613,7 +613,7 @@ static void update_neighbor_to_none(struct lw_ttdp_port_priv *ttdp_ppriv) {
 	teamd_ttdp_log_infox(ttdp_ppriv, "cleared neighbor");
 	struct ab* p = ttdp_ppriv->start.common.ctx->runner_priv;
 
-	if (p && ttdp_ppriv->line <= TTDP_MAX_PORTS_PER_TEAM) {
+	if (p && ttdp_ppriv->line < TTDP_MAX_PORTS_PER_TEAM) {
 		memcpy(p->neighbors[ttdp_ppriv->line].neighbor_uuid, ttdp_ppriv->neighbor_uuid,
 			sizeof(p->neighbors[ttdp_ppriv->line].neighbor_uuid));
 		memcpy(p->neighbors[ttdp_ppriv->line].neighbor_mac, ttdp_ppriv->neighbor_mac,
@@ -1392,6 +1392,8 @@ static void set_neigh_hears_us(struct teamd_context *ctx, struct lw_ttdp_port_pr
 	struct ab *ab = (struct ab*)ctx->runner_priv;
 	if (!ab)
 		return;
+	if (ttdp_ppriv->line >= TTDP_MAX_PORTS_PER_TEAM)
+		return;
 	bool prev = ab->lines_heard[ttdp_ppriv->line];
 	ttdp_ppriv->heard = state;
 	ab->lines_heard[ttdp_ppriv->line] = state;
@@ -1540,7 +1542,7 @@ static int lw_ttdp_receive(struct teamd_context *ctx, int events, void *priv) {
 			teamd_ttdp_log_infox(ttdp_ppriv, "New neighbor detected!");
 			struct ab* p = (struct ab*)ctx->runner_priv;
 
-			if (p && ttdp_ppriv->line <= TTDP_MAX_PORTS_PER_TEAM) {
+			if (p && ttdp_ppriv->line < TTDP_MAX_PORTS_PER_TEAM) {
 				/* copy uuid */
 				memcpy(p->neighbors[ttdp_ppriv->line].neighbor_uuid, ttdp_ppriv->neighbor_uuid,
 					sizeof(p->neighbors[ttdp_ppriv->line].neighbor_uuid));
@@ -1566,7 +1568,7 @@ static int lw_ttdp_receive(struct teamd_context *ctx, int events, void *priv) {
 				ttdp_ppriv->prev_neighbor_topocnt, ttdp_ppriv->neighbor_topocnt);
 			ttdp_ppriv->prev_neighbor_topocnt = ttdp_ppriv->neighbor_topocnt;
 			struct ab *p = (struct ab*)ctx->runner_priv;
-			if (p && ttdp_ppriv->line <= TTDP_MAX_PORTS_PER_TEAM) {
+			if (p && ttdp_ppriv->line < TTDP_MAX_PORTS_PER_TEAM) {
 				p->neighbors[ttdp_ppriv->line].neighbor_topocount = ttdp_ppriv->neighbor_topocnt;
 			} else {
 				/* Should never happen, leaving it here for future 4-line support */
