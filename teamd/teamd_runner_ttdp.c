@@ -370,7 +370,7 @@ static uint8_t update_aggregate_state(struct teamd_context *ctx,
 	uint8_t inaugurated = ab->inaugurated;
 	uint8_t inhibit_any = (ab->inhibition_flag_local | ab->inhibition_flag_any);
 	uint8_t inhibit = ((inhibit_any & TTDP_LOGIC_TRUE) != 0);
-	uint8_t mid = (ab->receiving_topology_frames) || !(is_neighbor_none(&ab->elected_neighbor));
+	uint8_t mid = (ab->receiving_topology_frames) && !(is_neighbor_none(&ab->elected_neighbor));
 	uint8_t end = !(mid);
 
 	teamd_ttdp_log_infox(ctx->team_devname, "update state curr %d inaug %d inhibit %d "
