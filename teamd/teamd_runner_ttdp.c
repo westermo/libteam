@@ -441,6 +441,12 @@ static uint8_t update_aggregate_state(struct teamd_context *ctx,
 				/* We had set lengthening before, but now have no neighbor. The consist that caused
 				 * us to set lengthening in the first place must have disappeared again, so clear it. */
 				set_lengthening(ctx, ab, false);
+			} else if ((ab->lengthening_detected == true)
+				&& is_neighbor_none(&ab->elected_neighbor)) {
+				/* This is similar to the case above, but we went from having a neighbor, to having
+				 * a different one (setting shortening and lengthening), to not having one again -
+				 * in which case we should reset lengthening. */
+				set_lengthening(ctx, ab, false);
 			}
 			break;
 		case TTDP_AGG_STATE_FIXED_MIDDLE:
